@@ -62,7 +62,7 @@ class Api(Plugin):
             self.db.notifications_token = ""
         return res
 
-    def request(self, method, path, **kwargs):
+    def request(self, method, path, include_std_headers=True, **kwargs):
         """Send API Request
 
         Arguments:
@@ -88,10 +88,13 @@ class Api(Plugin):
             verify = True
             proxies = None
 
-        headers = {
-            'Authorization': f'Bearer {self.db.api_token}',
-            'user_id': self.db.user_id
-        }
+        if include_std_headers:
+            headers = {
+                'Authorization': f'Bearer {self.db.api_token}',
+                'user_id': self.db.user_id
+            }
+        else:
+            headers = dict()
         if kwargs.get('headers'):
             headers.update(kwargs.get('headers', {}))
         query = kwargs.get('query')
@@ -116,11 +119,18 @@ class Api(Plugin):
                                            proxies=proxies,
                                            verify=verify)
         elif method.upper() == 'POST':
-            res = self.state.session.post(url,
-                                          json=data,
-                                          headers=headers,
-                                          proxies=proxies,
-                                          verify=verify)
+            if 'urlencoded' in headers.get('Content-Type', ''):
+                res = self.state.session.post(url,
+                                              data=data,
+                                              headers=headers,
+                                              proxies=proxies,
+                                              verify=verify)
+            else:
+                res = self.state.session.post(url,
+                                              json=data,
+                                              headers=headers,
+                                              proxies=proxies,
+                                              verify=verify)
         elif method.upper() == 'PUT':
             res = self.state.session.put(url,
                                          headers=headers,
