@@ -23,6 +23,8 @@ class Config(Base):
     password = sa.Column(sa.VARCHAR(150), default='')
     scratchspace_dir = sa.Column(sa.VARCHAR(250), default='~/Scratchspace')
     slack_url = sa.Column(sa.VARCHAR(500), default='')
+    slack_app_token = sa.Column(sa.VARCHAR(100), default='')
+    slack_channel = sa.Column(sa.VARCHAR(100), default='')
     smtp_email_from = sa.Column(sa.VARCHAR(250), default='')
     smtp_password = sa.Column(sa.VARCHAR(250), default='')
     smtp_port = sa.Column(sa.INTEGER, default=465)

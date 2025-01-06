@@ -58,7 +58,20 @@ class Alerts(Plugin):
                          r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(?=\s|$)', '[IPv6]', message)
         return message
 
-    def slack(self, message='This is a test'):
-        requests.post(self.db.slack_url,
-                      data=json.dumps({'text': message}),
-                      headers={'Content-Type': 'application/json'})
+    def slack(self, message='This is a test', channel=None):
+        if channel == None:
+            channel = self.db.slack_channel
+        if channel in [None, '']:
+            channel = input('Slack Channel: ')
+            self.db.slack_channel = channel
+        if self.db.slack_app_token == '':
+            self.db.slack_app_token = input('Slack App Token: ')
+        requests.post('https://slack.com/api/chat.postMessage',
+                      data=json.dumps({
+                          'text': message,
+                          'channel': channel,
+                      }),
+                      headers={
+                          'Authorization': f'Bearer {self.db.slack_app_token}',
+                          'Content-Type': 'application/json'
+                      })

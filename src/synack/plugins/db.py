@@ -476,11 +476,29 @@ class Db(Plugin):
 
     @property
     def slack_url(self):
+        print('The \'slack_url\' option is no longer functional and will be removed in a later version. Switch to \'slack_app_token\' and \'slack_channel\'.')
         return self.get_config('slack_url')
 
     @slack_url.setter
     def slack_url(self, value):
+        print('The \'slack_url\' option is no longer functional and will be removed in a later version. Switch to \'slack_app_token\' and \'slack_channel\'.')
         self.set_config('slack_url', value)
+
+    @property
+    def slack_app_token(self):
+        return self.get_config('slack_app_token')
+
+    @slack_app_token.setter
+    def slack_app_token(self, value):
+        self.set_config('slack_app_token', value)
+
+    @property
+    def slack_channel(self):
+        return self.get_config('slack_channel')
+
+    @slack_channel.setter
+    def slack_channel(self, value):
+        self.set_config('slack_channel', value)
 
     @property
     def smtp_email_from(self):
