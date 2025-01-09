@@ -21,7 +21,7 @@ class Scratchspace(Plugin):
             codename = target.codename
 
         if codename:
-            f = self.db.scratchspace_dir
+            f = self.state.scratchspace_dir
             f = f / codename
             f.mkdir(parents=True, exist_ok=True)
             f = f / filename

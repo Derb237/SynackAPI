@@ -18,7 +18,7 @@ class Templates(Plugin):
                     self.registry.get(plugin)(self.state))
 
     def build_filepath(self, mission, generic_ok=False):
-        f = self.db.template_dir
+        f = self.state.template_dir
         f = f / self.build_safe_name(mission['taskType'])
         if mission.get('asset'):
             f = f / self.build_safe_name(mission['asset'])

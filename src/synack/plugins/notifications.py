@@ -23,9 +23,8 @@ class Notifications(Plugin):
 
     def get_unread_count(self):
         """Get the number of unread notifications"""
-        token = self.db.notifications_token
         query = {
-            "authorization_token": token
+            "authorization_token": self.state.notifications_token
         }
         res = self.api.notifications('GET',
                                      'notifications/unread_count',

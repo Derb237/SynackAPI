@@ -18,5 +18,5 @@ class Users(Plugin):
         """Get a user's profile"""
         res = self.api.request('GET', f'profiles/{user_id}')
         if res.status_code == 200:
-            self.db.user_id = res.json().get('user_id')
+            self.state.user_id = res.json().get('user_id')
             return res.json()

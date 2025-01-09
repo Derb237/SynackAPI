@@ -142,7 +142,7 @@ class Targets(Plugin):
 
             res = self.api.request('GET', f'asset/v2/assets?{"&".join(queries)}')
             if res.status_code == 200:
-                if self.db.use_scratchspace:
+                if self.state.use_scratchspace:
                     self.scratchspace.set_assets_file(res.text, target=target)
                 return res.json()
 
@@ -196,7 +196,7 @@ class Targets(Plugin):
             res = self.api.request('POST',
                                    f'asset/v1/organizations/{target.organization}' +
                                    f'/owners/listings/{target.slug}' +
-                                   f'/users/{self.db.user_id}' +
+                                   f'/users/{self.state.user_id}' +
                                    '/credentials')
             if res.status_code == 200:
                 return res.json()
@@ -279,7 +279,7 @@ class Targets(Plugin):
             if len(scope) > 0:
                 if add_to_db:
                     self.db.add_ips(self.build_scope_host_db(target.slug, scope))
-                if self.db.use_scratchspace:
+                if self.state.use_scratchspace:
                     self.scratchspace.set_hosts_file(scope, target=target)
 
         return scope
@@ -316,7 +316,7 @@ class Targets(Plugin):
             if len(scope) > 0:
                 if add_to_db:
                     self.db.add_urls(self.build_scope_web_db(scope))
-                if self.db.use_scratchspace:
+                if self.state.use_scratchspace:
                     self.scratchspace.set_burp_file(self.build_scope_web_burp(scope), target=target)
 
         return scope

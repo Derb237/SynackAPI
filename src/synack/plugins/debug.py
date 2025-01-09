@@ -17,6 +17,6 @@ class Debug(Plugin):
                     self.registry.get(plugin)(self.state))
 
     def log(self, title, message):
-        if self.db.debug:
+        if self.state.debug:
             t = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
             print(f'{t} -- {title.upper()}\n\t{message}')

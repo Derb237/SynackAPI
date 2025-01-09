@@ -20,7 +20,7 @@ class Auth(Plugin):
 
     def build_otp(self):
         """Generate and return a OTP."""
-        totp = pyotp.TOTP(self.db.otp_secret)
+        totp = pyotp.TOTP(self.state.otp_secret)
         totp.digits = 7
         totp.interval = 10
         totp.issuer = 'synack'
@@ -29,7 +29,7 @@ class Auth(Plugin):
     def get_api_token(self):
         """Log in to get a new API token."""
         if self.users.get_profile():
-            return self.db.api_token
+            return self.state.api_token
         csrf = self.get_login_csrf()
         progress_token = None
         duo_auth_url = None
@@ -55,6 +55,7 @@ class Auth(Plugin):
             if res.status_code == 200:
                 j = res.json()
                 self.db.api_token = j.get('access_token')
+                self.state.api_token = j.get('access_token')
                 self.set_login_script()
                 return j.get('access_token')
 
@@ -285,8 +286,8 @@ class Auth(Plugin):
             'X-CSRF-Token': csrf
         }
         data = {
-            'email': self.db.email,
-            'password': self.db.password
+            'email': self.state.email,
+            'password': self.state.password
         }
         res = self.api.login('POST',
                              'authenticate',
@@ -305,6 +306,7 @@ class Auth(Plugin):
         if res.status_code == 200:
             j = res.json()
             self.db.notifications_token = j['token']
+            self.state.notifications_token = j['token']
             return j['token']
 
     def set_login_script(self):
@@ -316,7 +318,7 @@ class Auth(Plugin):
             "(function() {" +\
             "sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
             ",'" +\
-            self.db.api_token +\
+            self.state.api_token +\
             "');" +\
             "setTimeout(forceLogin,60000);" +\
             "let btn = document.createElement('button');" +\

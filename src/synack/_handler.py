@@ -19,6 +19,7 @@ class Handler:
             instance = subclass(self.state)
             setattr(self, name.lower(), instance)
 
+        self.state._db = self.db
         self.login()
 
     def login(self):

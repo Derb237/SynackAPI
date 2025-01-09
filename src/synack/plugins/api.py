@@ -54,12 +54,13 @@ class Api(Plugin):
 
         if not kwargs.get('headers'):
             kwargs['headers'] = dict()
-        auth = "Bearer " + self.db.notifications_token
+        auth = "Bearer " + self.state.notifications_token
         kwargs['headers']['Authorization'] = auth
 
         res = self.request(method, url, **kwargs)
         if res.status_code == 422:
-            self.db.notifications_token = ""
+            self.db.notifications_token = ''
+            self.state.notifications_token = ''
         return res
 
     def request(self, method, path, include_std_headers=True, **kwargs):
@@ -80,18 +81,14 @@ class Api(Plugin):
             base = 'https://platform.synack.com/api/'
         url = f'{base}{path}'
 
-        if self.db.use_proxies:
-            warnings.filterwarnings("ignore")
-            verify = False
-            proxies = self.db.proxies
-        else:
-            verify = True
-            proxies = None
+        warnings.filterwarnings("ignore")
+        verify = False
+        proxies = self.state.proxies if self.state.use_proxies else None
 
         if include_std_headers:
             headers = {
-                'Authorization': f'Bearer {self.db.api_token}',
-                'user_id': self.db.user_id
+                'Authorization': f'Bearer {self.state.api_token}',
+                'user_id': self.state.user_id
             }
         else:
             headers = dict()

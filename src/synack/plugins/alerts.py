@@ -9,6 +9,7 @@ import json
 import re
 import requests
 import smtplib
+import warnings
 
 from .base import Plugin
 
@@ -26,15 +27,15 @@ class Alerts(Plugin):
         msg = email.message.EmailMessage()
         msg.set_content(message)
         msg['Subject'] = subject
-        msg['From'] = self.db.smtp_email_from
-        msg['To'] = self.db.smtp_email_to
+        msg['From'] = self.state.smtp_email_from
+        msg['To'] = self.state.smtp_email_to
 
-        if self.db.smtp_starttls:
-            server = smtplib.SMTP_SSL(self.db.smtp_server, self.db.smtp_port)
+        if self.state.smtp_starttls:
+            server = smtplib.SMTP_SSL(self.state.smtp_server, self.state.smtp_port)
         else:
-            server = smtplib.SMTP(self.db.smtp_server, self.db.smtp_port)
+            server = smtplib.SMTP(self.state.smtp_server, self.state.smtp_port)
 
-        server.login(self.db.smtp_username, self.db.smtp_password)
+        server.login(self.state.smtp_username, self.state.smtp_password)
         server.send_message(msg)
 
     def sanitize(self, message):
@@ -60,18 +61,15 @@ class Alerts(Plugin):
 
     def slack(self, message='This is a test', channel=None):
         if channel == None:
-            channel = self.db.slack_channel
-        if channel in [None, '']:
-            channel = input('Slack Channel: ')
-            self.db.slack_channel = channel
-        if self.db.slack_app_token == '':
-            self.db.slack_app_token = input('Slack App Token: ')
+            channel = self.state.slack_channel
+        warnings.filterwarnings("ignore")
         requests.post('https://slack.com/api/chat.postMessage',
                       data=json.dumps({
                           'text': message,
                           'channel': channel,
                       }),
                       headers={
-                          'Authorization': f'Bearer {self.db.slack_app_token}',
+                          'Authorization': f'Bearer {self.state.slack_app_token}',
                           'Content-Type': 'application/json'
-                      })
+                      },
+                      verify=False)

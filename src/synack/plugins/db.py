@@ -197,30 +197,22 @@ class Db(Plugin):
 
     @property
     def debug(self):
-        if self.state.debug is None:
-            return self.get_config('debug')
-        else:
-            return self.state.debug
+        return self.get_config('debug')
 
     @debug.setter
     def debug(self, value):
-        self.state.debug = value
         self.set_config('debug', value)
 
     @property
     def email(self):
-        if self.state.email is None:
-            ret = self.get_config('email')
-            if not ret:
-                ret = input("Synack Email: ")
-                self.email = ret
-            return ret
-        else:
-            return self.state.email
+        ret = self.get_config('email')
+        if not ret:
+            ret = input('Synack Email: ')
+            self.email = ret
+        return ret
 
     @email.setter
     def email(self, value):
-        self.state.email = value
         self.set_config('email', value)
 
     def find_ips(self, ip=None, **kwargs):
@@ -379,35 +371,26 @@ class Db(Plugin):
 
     @property
     def otp_secret(self):
-        if self.state.otp_secret is None:
-            ret = self.get_config('otp_secret')
-            if not ret:
-                ret = input("Synack OTP Secret: ")
-                self.otp_secret = ret
-            self.state.otp_secret = ret
-            return ret
-        else:
-            return self.state.otp_secret
+        ret = self.get_config('otp_secret')
+        if not ret:
+            ret = input('Synack OTP Secret: ')
+            self.otp_secret = ret
+        return ret
 
     @otp_secret.setter
     def otp_secret(self, value):
-        self.state.otp_secret = value
         self.set_config('otp_secret', value)
 
     @property
     def password(self):
-        if self.state.password is None:
-            ret = self.get_config('password')
-            if not ret:
-                ret = input("Synack Password: ")
-                self.password = ret
-            return ret
-        else:
-            return self.state.password
+        ret = self.get_config('password')
+        if not ret:
+            ret = input('Synack Password: ')
+            self.password = ret
+        return ret
 
     @password.setter
     def password(self, value):
-        self.state.password = value
         self.set_config('password', value)
 
     @property
@@ -442,12 +425,7 @@ class Db(Plugin):
 
     @property
     def scratchspace_dir(self):
-        if self.state.scratchspace_dir is None:
-            ret = Path(self.get_config('scratchspace_dir')).expanduser().resolve()
-            self.state.scratchspace_dir = ret
-        else:
-            ret = self.state.scratchspace_dir
-        return ret
+        return Path(self.get_config('scratchspace_dir')).expanduser().resolve()
 
     @scratchspace_dir.setter
     def scratchspace_dir(self, value):
@@ -476,17 +454,19 @@ class Db(Plugin):
 
     @property
     def slack_url(self):
-        print('The \'slack_url\' option is no longer functional and will be removed in a later version. Switch to \'slack_app_token\' and \'slack_channel\'.')
         return self.get_config('slack_url')
 
     @slack_url.setter
     def slack_url(self, value):
-        print('The \'slack_url\' option is no longer functional and will be removed in a later version. Switch to \'slack_app_token\' and \'slack_channel\'.')
         self.set_config('slack_url', value)
 
     @property
     def slack_app_token(self):
-        return self.get_config('slack_app_token')
+        ret = self.get_config('slack_app_token')
+        if not ret:
+            ret = input('Slack App Token: ')
+            self.slack_app_token = ret
+        return ret
 
     @slack_app_token.setter
     def slack_app_token(self, value):
@@ -494,7 +474,11 @@ class Db(Plugin):
 
     @property
     def slack_channel(self):
-        return self.get_config('slack_channel')
+        ret = self.get_config('slack_channel')
+        if not ret:
+            ret = input('Slack Channel: ')
+            self.slack_channel = ret
+        return ret
 
     @slack_channel.setter
     def slack_channel(self, value):
@@ -565,12 +549,7 @@ class Db(Plugin):
 
     @property
     def template_dir(self):
-        if self.state.template_dir is None:
-            ret = Path(self.get_config('template_dir')).expanduser().resolve()
-            self.state.template_dir = ret
-        else:
-            ret = self.state.template_dir
-        return ret
+        return Path(self.get_config('template_dir')).expanduser().resolve()
 
     @template_dir.setter
     def template_dir(self, value):
@@ -585,14 +564,10 @@ class Db(Plugin):
 
     @property
     def use_proxies(self):
-        if self.state.use_proxies is None:
-            return self.get_config('use_proxies')
-        else:
-            return self.state.use_proxies
+        return self.get_config('use_proxies')
 
     @use_proxies.setter
     def use_proxies(self, value):
-        self.state.use_proxies = value
         self.set_config('use_proxies', value)
 
     @property
@@ -605,12 +580,8 @@ class Db(Plugin):
 
     @property
     def use_scratchspace(self):
-        if self.state.use_scratchspace is None:
-            return self.get_config('use_scratchspace')
-        else:
-            return self.state.use_scratchspace
+        return self.get_config('use_scratchspace')
 
     @use_scratchspace.setter
     def use_scratchspace(self, value):
-        self.state.use_scratchspace = value
         self.set_config('use_scratchspace', value)
