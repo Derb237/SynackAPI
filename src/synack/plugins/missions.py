@@ -111,6 +111,7 @@ class Missions(Plugin):
                                per_page)
                 ret.extend(new)
             return ret
+        return []
 
     def get_approved(self):
         """Get a list of missions currently approved"""
@@ -142,6 +143,7 @@ class Missions(Plugin):
                                query=query)
         if res.status_code == 204:
             return int(res.headers.get('x-count', 0))
+        return 0
 
     def get_evidences(self, mission):
         """Download the evidences for a single mission
