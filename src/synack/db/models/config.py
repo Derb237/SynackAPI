@@ -20,6 +20,7 @@ class Config(Base):
     login = sa.Column(sa.BOOLEAN, default=True)
     notifications_token = sa.Column(sa.VARCHAR(1000), default='')
     otp_secret = sa.Column(sa.VARCHAR(50), default='')
+    otp_count = sa.Column(sa.INTEGER, default=0)
     password = sa.Column(sa.VARCHAR(150), default='')
     scratchspace_dir = sa.Column(sa.VARCHAR(250), default='~/Scratchspace')
     slack_url = sa.Column(sa.VARCHAR(500), default='')

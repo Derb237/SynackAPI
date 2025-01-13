@@ -24,4 +24,4 @@ def upgrade():
 def downgrade():
     with op.batch_alter_table('config') as batch_op:
         batch_op.drop_column('slack_app_token')
-        batch_op.drop_column('slack_channelslack_channel')
+        batch_op.drop_column('slack_channel')

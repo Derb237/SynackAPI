@@ -382,6 +382,18 @@ class Db(Plugin):
         self.set_config('otp_secret', value)
 
     @property
+    def otp_count(self):
+        ret = self.get_config('otp_count')
+        if not ret:
+            ret = input('Synack OTP Count: ')
+            self.otp_count = int(ret)
+        return ret
+
+    @otp_count.setter
+    def otp_count(self, value):
+        self.set_config('otp_count', value)
+
+    @property
     def password(self):
         ret = self.get_config('password')
         if not ret:

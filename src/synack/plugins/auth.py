@@ -174,6 +174,38 @@ class Auth(Plugin):
                     push_vars['prompt_device_index'] = phone.get('index', '')
         return push_vars
 
+    def get_duo_hotp(self):
+        hotp = pyotp.HOTP(s=self.state.otp_secret)
+        return hotp.generate_otp(self.state.otp_count)
+
+    def get_duo_hotp_txid(self, push_vars):
+        # Doing the POST that should actually send the push notification
+        headers = {
+            'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Linux"',
+            'Referer': f'{push_vars.get("url_base", "")}/frame/v4/auth/prompt?sid={push_vars.get("sid", "")}',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Dest': 'empty',
+            'Accept': '*/*',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-Xsrftoken': push_vars.get('xsrf', ''),
+        }
+        data = {
+            'device': 'null',
+            'passcode': self.get_duo_hotp(),
+            'factor': 'Passcode',
+            'postAuthDestination': 'OIDC_EXIT',
+            'browser_features': '{"touch_supported":false,"platform_authenticator_status":"unavailable","webauthn_supported":true}',
+            'sid': push_vars.get('sid', '')
+        }
+        res = self.api.request('POST', f'{push_vars.get("url_base", "")}/frame/v4/prompt', include_std_headers=False, headers=headers, data=data)
+        if res.status_code == 200:
+            push_vars['txid'] = res.json().get('response', {}).get('txid', '')
+            self.db.otp_count+=1
+        return push_vars
+
     def get_duo_push_notification_txid(self, push_vars):
         # Doing the POST that should actually send the push notification
         headers = {
@@ -241,8 +273,10 @@ class Auth(Plugin):
         data = {
             'sid': push_vars.get('sid', ''),
             'txid': push_vars.get('txid', ''),
-            'factor': 'Duo Push',
-            'device_key': push_vars.get('prompt_device_key', ''),
+            'factor': 'Passcode',
+            'device_key': 'null',
+            #'factor': 'Duo Push',
+            #'device_key': push_vars.get('prompt_device_key', ''),
             '_xsrf': push_vars.get('xsrf', ''),
             'dampen_choice': 'false'
         }
@@ -259,7 +293,8 @@ class Auth(Plugin):
         push_vars = self.get_duo_push_xsrf_token(push_vars)
         self.get_duo_push_vars_post(push_vars)
         push_vars = self.get_duo_push_method_data(push_vars)
-        push_vars = self.get_duo_push_notification_txid(push_vars)
+        push_vars = self.get_duo_hotp_txid(push_vars)
+        #push_vars = self.get_duo_push_notification_txid(push_vars)
         self.get_duo_push_status(push_vars)
         push_vars = self.get_duo_push_grant_token(push_vars)
         return push_vars.get('grant_token', '')

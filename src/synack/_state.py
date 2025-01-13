@@ -21,6 +21,7 @@ class State(object):
         self._login = None
         self._notifications_token = None
         self._otp_secret = None
+        self._otp_count = None
         self._password = None
         self._proxies = None
         self._scratchspace_dir = None
@@ -122,6 +123,7 @@ class State(object):
         ret = self._api_token
         if ret == None:
             ret = self._db.api_token
+        return ret
 
     @api_token.setter
     def api_token(self, value: str) -> None:
@@ -266,6 +268,17 @@ class State(object):
     @otp_secret.setter
     def otp_secret(self, value: str) -> None:
         self._otp_secret = value
+
+    @property
+    def otp_count(self) -> str:
+        ret = self._otp_count
+        if ret == None:
+            ret = self._db.otp_count
+        return ret
+
+    @otp_count.setter
+    def otp_count(self, value: int) -> None:
+        self._otp_count = value
 
     @property
     def email(self) -> str:
