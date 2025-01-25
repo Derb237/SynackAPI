@@ -370,18 +370,6 @@ class Db(Plugin):
         self.set_config('notifications_token', value)
 
     @property
-    def otp_secret(self):
-        ret = self.get_config('otp_secret')
-        if not ret:
-            ret = input('Synack OTP Secret: ')
-            self.otp_secret = ret
-        return ret
-
-    @otp_secret.setter
-    def otp_secret(self, value):
-        self.set_config('otp_secret', value)
-
-    @property
     def otp_count(self):
         ret = self.get_config('otp_count')
         if not ret:
@@ -392,6 +380,18 @@ class Db(Plugin):
     @otp_count.setter
     def otp_count(self, value):
         self.set_config('otp_count', value)
+
+    @property
+    def otp_secret(self):
+        ret = self.get_config('otp_secret')
+        if not ret:
+            ret = input('Synack OTP Secret: ')
+            self.otp_secret = ret
+        return ret
+
+    @otp_secret.setter
+    def otp_secret(self, value):
+        self.set_config('otp_secret', value)
 
     @property
     def password(self):
@@ -465,14 +465,6 @@ class Db(Plugin):
         alembic.command.upgrade(config, 'head')
 
     @property
-    def slack_url(self):
-        return self.get_config('slack_url')
-
-    @slack_url.setter
-    def slack_url(self, value):
-        self.set_config('slack_url', value)
-
-    @property
     def slack_app_token(self):
         ret = self.get_config('slack_app_token')
         if not ret:
@@ -495,6 +487,14 @@ class Db(Plugin):
     @slack_channel.setter
     def slack_channel(self, value):
         self.set_config('slack_channel', value)
+
+    @property
+    def slack_url(self):
+        return self.get_config('slack_url')
+
+    @slack_url.setter
+    def slack_url(self, value):
+        self.set_config('slack_url', value)
 
     @property
     def smtp_email_from(self):

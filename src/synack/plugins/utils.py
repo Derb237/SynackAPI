@@ -7,6 +7,7 @@ from .base import Plugin
 
 import re
 
+
 class Utils(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

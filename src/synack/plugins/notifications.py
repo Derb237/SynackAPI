@@ -17,7 +17,7 @@ class Notifications(Plugin):
     def get(self):
         """Get a list of recent notifications"""
         res = self._api.notifications('GET',
-                                     'notifications?meta=1')
+                                      'notifications?meta=1')
         if res.status_code == 200:
             return res.json()
 
@@ -27,7 +27,7 @@ class Notifications(Plugin):
             "authorization_token": self._state.notifications_token
         }
         res = self._api.notifications('GET',
-                                     'notifications/unread_count',
-                                     query=query)
+                                      'notifications/unread_count',
+                                      query=query)
         if res.status_code == 200:
             return res.json()

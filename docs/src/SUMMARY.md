@@ -18,6 +18,7 @@
     - [Api](./usage/plugins/api.md)
     - [Auth](./usage/plugins/auth.md)
     - [Db](./usage/plugins/db.md)
+    - [Duo](./usage/plugins/duo.md)
     - [Debug](./usage/plugins/debug.md)
     - [Missions](./usage/plugins/missions.md)
     - [Notifications](./usage/plugins/notifications.md)

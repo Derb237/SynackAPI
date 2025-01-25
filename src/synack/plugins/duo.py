@@ -33,7 +33,7 @@ class Duo(Plugin):
         self._txid = None
         self._xsrf = None
 
-    def _get_headers(self, overrides=None):
+    def _build_headers(self, overrides=None):
         headers = {
             'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
             'Sec-Ch-Ua-Mobile': '?0',
@@ -60,6 +60,43 @@ class Duo(Plugin):
             self._get_oidc_exit()
             return self._grant_token
 
+    def _get_mfa_details(self):
+        if self._state.otp_secret:
+            self._device = 'null'
+            self._hotp = pyotp.HOTP(s=self._state.otp_secret).generate_otp(self._state.otp_count)
+            self._factor = 'Passcode'
+            return
+
+        headers = {
+            'Referer': f'{self._base_url}/frame/v4/auth/prompt?sid={self._sid}',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Dest': 'empty',
+            'Accept': '*/*',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-Xsrftoken': self._xsrf
+        }
+        query = {
+            'post_auth_action': 'OIDC_EXIT',
+            'browser_features': json.dumps({
+                 'touch_supported': 'false',
+                 'platform_authenticator_status': 'unavailable',
+                 'webauthn_supported': 'true'
+             }, separators=(',', ':')),
+            'sid': self._sid
+        }
+        res = self._api.request('GET', f'{self._base_url}/frame/v4/auth/prompt/data', headers=headers, query=query)
+        if res.status_code == 200:
+            for method in res.json().get('response', {}).get('auth_method_order', []):
+                if method.get('factor', '') == 'Duo Push':
+                    device_key = method.get('deviceKey', '')
+                    break
+
+            for phone in res.json().get('response', {}).get('phones', []):
+                if phone.get('key', '') == device_key:
+                    self._device = phone.get('index', '')
+                    self._factor = 'Duo Push'
+
     def _get_oidc_exit(self):
         headers = {
             'Referer': f'{self._base_url}/frame/v4/auth/prompt?sid={self._sid}',
@@ -82,30 +119,9 @@ class Duo(Plugin):
         if res.status_code == 200:
             self._grant_token = re.search('grant_token=([^&]*)', res.url).group(1)
 
-    def _set_session_variables(self):
-        headers = {
-            'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
-            'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': '"Linux"',
-            'Referer': self._referrer,
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Dest': 'document',
-            'Accept': ';'.join([
-                'text/html,application/xhtml+xml,application/xml',
-                'q=0.9,image/avif,image/webp,image/apng,*/*',
-                'q=0.8,application/signed-exchange',
-                'v=b3;q=0.7'
-             ]),
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        res = self._api.request('POST', self._referrer, headers=headers, data=self._session_vars)
-        if res.status_code == 200:
-            self._referrer = res.url
-
     def _get_session_variables(self):
         self._referrer = 'https://login.synack.com/'
-        res = self._api.request('GET', self._auth_url, headers=self._get_headers())
+        res = self._api.request('GET', self._auth_url, headers=self._build_headers())
         if res.status_code == 200:
             self._sid = re.search('sid=([^&]*)', res.url).group(1)
             self._referrer = res.url
@@ -152,82 +168,6 @@ class Duo(Plugin):
                 'react_support': 'false',
                 'react_support_error_message': ''
             }
-
-    def _get_txid(self):
-        """Sends Push Notification or Submits HOTP"""
-        headers = {
-            'Referrer': f'{self._base_url}/frame/v4/auth/prompt?sid={self._sid}',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Dest': 'empty',
-            'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            'X-Xsrftoken': self._xsrf
-        }
-
-        self._get_mfa_details()
-
-        if self._device and self._factor:
-            data = {
-                'device': self._device,
-                'factor': self._factor,
-                'postAuthDestination': 'OIDC_EXIT',
-                'browser_features': json.dumps({
-                     'touch_supported': 'false',
-                     'platform_authenticator_status': 'unavailable',
-                     'webauthn_supported': 'true'
-                 }, separators=(',', ':')),
-                'sid': self._sid
-            }
-
-            if self._state.otp_secret:
-                data['passcode'] = self._hotp
-
-            res = self._api.request('POST',
-                                   f'{self._base_url}/frame/v4/prompt',
-                                   headers=self._get_headers(headers),
-                                   data=data)
-            if res.status_code == 200:
-                self._txid = res.json().get('response', {}).get('txid', '')
-                if self._state.otp_secret:
-                    self._db.otp_count += 1
-
-    def _get_mfa_details(self):
-        if self._state.otp_secret:
-            self._device = 'null'
-            self._hotp = pyotp.HOTP(s=self._state.otp_secret).generate_otp(self._state.otp_count)
-            self._factor = 'Passcode'
-            return
-
-        headers = {
-            'Referer': f'{self._base_url}/frame/v4/auth/prompt?sid={self._sid}',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Dest': 'empty',
-            'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            'X-Xsrftoken': self._xsrf
-        }
-        query = {
-            'post_auth_action': 'OIDC_EXIT',
-            'browser_features': json.dumps({
-                 'touch_supported': 'false',
-                 'platform_authenticator_status': 'unavailable',
-                 'webauthn_supported': 'true'
-             }, separators=(',', ':')),
-            'sid': self._sid
-        }
-        res = self._api.request('GET', f'{self._base_url}/frame/v4/auth/prompt/data', headers=headers, query=query)
-        if res.status_code == 200:
-            for method in res.json().get('response', {}).get('auth_method_order', []):
-                if method.get('factor', '') == 'Duo Push':
-                    device_key = method.get('deviceKey', '')
-                    break
-
-            for phone in res.json().get('response', {}).get('phones', []):
-                if phone.get('key', '') == device_key:
-                    self._device = phone.get('index', '')
-                    self._factor = 'Duo Push'
 
     def _get_status(self):
         headers = {
@@ -276,3 +216,63 @@ class Duo(Plugin):
                     print(res.json())
                     break
             time.sleep(5)
+
+    def _get_txid(self):
+        """Sends Push Notification or Submits HOTP"""
+        headers = {
+            'Referrer': f'{self._base_url}/frame/v4/auth/prompt?sid={self._sid}',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Dest': 'empty',
+            'Accept': '*/*',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-Xsrftoken': self._xsrf
+        }
+
+        self._get_mfa_details()
+
+        if self._device and self._factor:
+            data = {
+                'device': self._device,
+                'factor': self._factor,
+                'postAuthDestination': 'OIDC_EXIT',
+                'browser_features': json.dumps({
+                     'touch_supported': 'false',
+                     'platform_authenticator_status': 'unavailable',
+                     'webauthn_supported': 'true'
+                 }, separators=(',', ':')),
+                'sid': self._sid
+            }
+
+            if self._state.otp_secret:
+                data['passcode'] = self._hotp
+
+            res = self._api.request('POST',
+                                    f'{self._base_url}/frame/v4/prompt',
+                                    headers=self._build_headers(headers),
+                                    data=data)
+            if res.status_code == 200:
+                self._txid = res.json().get('response', {}).get('txid', '')
+                if self._state.otp_secret:
+                    self._db.otp_count += 1
+
+    def _set_session_variables(self):
+        headers = {
+            'Sec-Ch-Ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Linux"',
+            'Referer': self._referrer,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Dest': 'document',
+            'Accept': ';'.join([
+                'text/html,application/xhtml+xml,application/xml',
+                'q=0.9,image/avif,image/webp,image/apng,*/*',
+                'q=0.8,application/signed-exchange',
+                'v=b3;q=0.7'
+             ]),
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        res = self._api.request('POST', self._referrer, headers=headers, data=self._session_vars)
+        if res.status_code == 200:
+            self._referrer = res.url

@@ -37,21 +37,14 @@ class Auth(Plugin):
                 "grant_token": grant_token
             }
             res = self._api.request('GET',
-                                   url + 'token',
-                                   headers=headers,
-                                   query=query)
+                                    url + 'token',
+                                    headers=headers,
+                                    query=query)
             if res.status_code == 200:
                 j = res.json()
                 self._db.api_token = j.get('access_token')
                 self.set_login_script()
                 return j.get('access_token')
-
-    def get_login_csrf(self):
-        """Get the CSRF Token from the login page"""
-        res = self._api.request('GET', 'https://login.synack.com')
-        m = re.search('<meta name="csrf-token" content="([^"]*)"',
-                      res.text)
-        return m.group(1)
 
     def get_authentication_response(self, csrf):
         """Get duo_auth_url from email and password login"""
@@ -63,15 +56,22 @@ class Auth(Plugin):
             'password': self._state.password
         }
         res = self._api.login('POST',
-                             'authenticate',
-                             headers=headers,
-                             data=data)
+                              'authenticate',
+                              headers=headers,
+                              data=data)
         if res.status_code == 200:
             return res.json()
         elif res.status_code == 400:
             csrf = self.get_login_csrf()
             if csrf:
                 return self.get_authentication_response(csrf)
+
+    def get_login_csrf(self):
+        """Get the CSRF Token from the login page"""
+        res = self._api.request('GET', 'https://login.synack.com')
+        m = re.search('<meta name="csrf-token" content="([^"]*)"',
+                      res.text)
+        return m.group(1)
 
     def get_notifications_token(self):
         """Request a new Notifications Token"""

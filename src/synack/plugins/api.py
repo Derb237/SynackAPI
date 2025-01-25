@@ -100,48 +100,48 @@ class Api(Plugin):
 
         if method.upper() == 'GET':
             res = self._state.session.get(url,
-                                         headers=headers,
-                                         proxies=proxies,
-                                         params=query,
-                                         verify=verify)
-        elif method.upper() == 'HEAD':
-            res = self._state.session.head(url,
                                           headers=headers,
                                           proxies=proxies,
                                           params=query,
                                           verify=verify)
-        elif method.upper() == 'PATCH':
-            res = self._state.session.patch(url,
-                                           json=data,
+        elif method.upper() == 'HEAD':
+            res = self._state.session.head(url,
                                            headers=headers,
                                            proxies=proxies,
+                                           params=query,
                                            verify=verify)
+        elif method.upper() == 'PATCH':
+            res = self._state.session.patch(url,
+                                            json=data,
+                                            headers=headers,
+                                            proxies=proxies,
+                                            verify=verify)
         elif method.upper() == 'POST':
             if 'urlencoded' in headers.get('Content-Type', ''):
                 res = self._state.session.post(url,
-                                              data=data,
-                                              headers=headers,
-                                              proxies=proxies,
-                                              verify=verify)
+                                               data=data,
+                                               headers=headers,
+                                               proxies=proxies,
+                                               verify=verify)
             else:
                 res = self._state.session.post(url,
-                                              json=data,
-                                              headers=headers,
-                                              proxies=proxies,
-                                              verify=verify)
+                                               json=data,
+                                               headers=headers,
+                                               proxies=proxies,
+                                               verify=verify)
         elif method.upper() == 'PUT':
             res = self._state.session.put(url,
-                                         headers=headers,
-                                         proxies=proxies,
-                                         params=data,
-                                         verify=verify)
+                                          headers=headers,
+                                          proxies=proxies,
+                                          params=data,
+                                          verify=verify)
 
         self._debug.log("Network Request",
-                       f"{res.status_code} -- {method.upper()} -- {url}" +
-                       f"\n\tHeaders: {headers}" +
-                       f"\n\tQuery: {query}" +
-                       f"\n\tData: {data}" +
-                       f"\n\tContent: {res.content}")
+                        f"{res.status_code} -- {method.upper()} -- {url}" +
+                        f"\n\tHeaders: {headers}" +
+                        f"\n\tQuery: {query}" +
+                        f"\n\tData: {data}" +
+                        f"\n\tContent: {res.content}")
 
         if res.status_code == 429:
             attempts = kwargs.get('attempts', 0)

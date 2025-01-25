@@ -31,7 +31,9 @@ for plugin in ./src/synack/plugins/*.py; do
         if [[ $? != 0 ]]; then
             grep "def ${def}(" ${plugin} -B1 | grep "@property" > /dev/null 2>&1
             if [[ $? != 0 ]]; then
-                echo ${p} missing documentation for: ${def}
+		if [[ "${def}" != "_"* ]]; then
+                    echo ${p} missing documentation for: ${def}
+		fi
             fi
         fi
     done

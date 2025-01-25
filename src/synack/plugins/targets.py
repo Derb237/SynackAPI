@@ -194,10 +194,10 @@ class Targets(Plugin):
         target = self._db.find_targets(**kwargs)[0]
         if target:
             res = self._api.request('POST',
-                                   f'asset/v1/organizations/{target.organization}' +
-                                   f'/owners/listings/{target.slug}' +
-                                   f'/users/{self._state.user_id}' +
-                                   '/credentials')
+                                    f'asset/v1/organizations/{target.organization}' +
+                                    f'/owners/listings/{target.slug}' +
+                                    f'/users/{self._state.user_id}' +
+                                    '/credentials')
             if res.status_code == 200:
                 return res.json()
 
@@ -384,8 +384,8 @@ class Targets(Plugin):
         ret = []
         for t in targets:
             res = self._api.request('POST',
-                                   f'targets/{t["slug"]}/signup',
-                                   data=data)
+                                    f'targets/{t["slug"]}/signup',
+                                    data=data)
             if res.status_code == 200:
                 ret.append(t)
         if len(targets) >= 15:
