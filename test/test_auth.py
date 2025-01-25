@@ -5,7 +5,6 @@ Tests for the _Auth.py Auth Class
 
 import os
 import pathlib
-import pyotp
 import sys
 import unittest
 
@@ -49,7 +48,6 @@ class AuthTestCase(unittest.TestCase):
         self.auth.users.get_profile = MagicMock()
         self.auth.users.get_profile.return_value = {"user_id": "john"}
         self.assertEqual("qweqweqwe", self.auth.get_api_token())
-
 
     def test_get_login_progress_token(self):
         """Should get the progress token from valid creds"""

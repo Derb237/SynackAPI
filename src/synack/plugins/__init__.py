@@ -13,3 +13,4 @@ from .targets import Targets
 from .templates import Templates
 from .transactions import Transactions
 from .users import Users
+from .utils import Utils

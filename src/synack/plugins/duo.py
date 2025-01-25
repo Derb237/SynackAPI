@@ -5,6 +5,8 @@ Functions related to handling Duo Security Multi-Factor Authentication.
 
 from .base import Plugin
 
+import base64
+import json
 import pyotp
 import re
 import time
@@ -13,9 +15,9 @@ import time
 class Duo(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for plugin in ['Api', 'Db']:
+        for plugin in ['Api', 'Db', 'Utils']:
             setattr(self,
-                    plugin.lower(),
+                    '_'+plugin.lower(),
                     self.registry.get(plugin)(self.state))
 
         self._auth_url = None
@@ -50,7 +52,7 @@ class Duo(Plugin):
         self._auth_url = auth_url
         self._get_session_variables()
         self._set_session_variables()
-        self._set_session_variables() # Yes, this needs to be called twice...
+        self._set_session_variables()  # Yes, this needs to be called twice...
         self._get_txid()
         if self._txid:
             self._get_status()
@@ -76,7 +78,7 @@ class Duo(Plugin):
             '_xsrf': self._xsrf,
             'dampen_choice': 'false'
         }
-        res = self.api.request('POST', f'{self._base_url}/frame/v4/oidc/exit', include_std_headers=False, headers=headers, data=data)
+        res = self._api.request('POST', f'{self._base_url}/frame/v4/oidc/exit', headers=headers, data=data)
         if res.status_code == 200:
             self._grant_token = re.search('grant_token=([^&]*)', res.url).group(1)
 
@@ -89,38 +91,58 @@ class Duo(Plugin):
             'Sec-Fetch-Site': 'same-origin',
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Dest': 'document',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept': ';'.join([
+                'text/html,application/xhtml+xml,application/xml',
+                'q=0.9,image/avif,image/webp,image/apng,*/*',
+                'q=0.8,application/signed-exchange',
+                'v=b3;q=0.7'
+             ]),
             'Content-Type': 'application/x-www-form-urlencoded'
         }
-        res = self.api.request('POST', self._referrer, headers=headers, data=self._session_vars)
+        res = self._api.request('POST', self._referrer, headers=headers, data=self._session_vars)
         if res.status_code == 200:
             self._referrer = res.url
 
     def _get_session_variables(self):
         self._referrer = 'https://login.synack.com/'
-        res = self.api.request('GET', self._auth_url, headers=self._get_headers())
+        res = self._api.request('GET', self._auth_url, headers=self._get_headers())
         if res.status_code == 200:
             self._sid = re.search('sid=([^&]*)', res.url).group(1)
             self._referrer = res.url
-            self._base_url = re.search('(https.*duosecurity\.com)/', res.url).group(1)
-            self._xsrf = re.search('<input type="hidden" name="_xsrf" value="([^"]*)"', res.text).group(1)
-            self._session_vars =  {
-                'tx': re.search('<input type="hidden" name="tx" value="([^"]*)"', res.text).group(1),
-                'parent': re.search('<input type="hidden" name="parent" value="([^"]*)"', res.text).group(1),
+            self._base_url = re.search('(https.*duosecurity.com)/', res.url).group(1)
+            self._xsrf = self._utils.get_html_tag_value('_xsrf', res.text)
+
+            client_hints = base64.b64encode(json.dumps({
+                'brands': [
+                    {'brand': 'Chromium', 'version': '131'},
+                    {'brand': 'Not_A Brand', 'version': '24'}
+                ],
+                'fullVersionList': [],
+                'mobile': False,
+                'platform': 'Linux',
+                'platformVersion': '',
+                'uaFullVersion': ''
+            }).encode()).decode()
+
+            analysis_feature = self._utils.get_html_tag_value('has_session_trust_analysis_feature', res.text)
+
+            self._session_vars = {
+                'tx': self._utils.get_html_tag_value('tx', res.text),
+                'parent': self._utils.get_html_tag_value('parent', res.text),
                 '_xsrf': self._xsrf,
-                'version': re.search('<input type="hidden" name="version" value="([^"]*)"', res.text).group(1),
-                'akey': re.search('<input type="hidden" name="akey" value="([^"]*)"', res.text).group(1),
-                'has_session_trust_analysis_feature': re.search('<input type="hidden" name="has_session_trust_analysis_feature" value="([^"]*)"', res.text).group(1),
-                'session_trust_extension_id': re.search('<input type="hidden" name="session_trust_extension_id" value="([^"]*)"', res.text).group(1),
-                'java_version': re.search('<input type="hidden" name="java_version" value="([^"]*)"', res.text).group(1),
-                'flash_version': re.search('<input type="hidden" name="flash_version" value="([^"]*)"', res.text).group(1),
+                'version': self._utils.get_html_tag_value('version', res.text),
+                'akey': self._utils.get_html_tag_value('akey', res.text),
+                'has_session_trust_analysis_feature': analysis_feature,
+                'session_trust_extension_id': self._utils.get_html_tag_value('session_trust_extension_id', res.text),
+                'java_version': self._utils.get_html_tag_value('java_version', res.text),
+                'flash_version': self._utils.get_html_tag_value('flash_version', res.text),
                 'screen_resolution_width': '3422',
                 'screen_resolution_height': '1465',
                 'extension_instance_key': '',
                 'color_depth': '24',
                 'has_touch_capability': 'false',
                 'ch_ua_error': '',
-                'client_hints': 'eyJicmFuZHMiOlt7ImJyYW5kIjoiQ2hyb21pdW0iLCJ2ZXJzaW9uIjoiMTMxIn0seyJicmFuZCI6Ik5vdF9BIEJyYW5kIiwidmVyc2lvbiI6IjI0In1dLCJmdWxsVmVyc2lvbkxpc3QiOltdLCJtb2JpbGUiOmZhbHNlLCJwbGF0Zm9ybSI6IkxpbnV4IiwicGxhdGZvcm1WZXJzaW9uIjoiIiwidWFGdWxsVmVyc2lvbiI6IiJ9',
+                'client_hints': client_hints,
                 'is_cef_browser': 'false',
                 'is_ipad_os': 'false',
                 'is_ie_compatibility_mode': '',
@@ -150,18 +172,25 @@ class Duo(Plugin):
                 'device': self._device,
                 'factor': self._factor,
                 'postAuthDestination': 'OIDC_EXIT',
-                'browser_features': '{"touch_supported":false,"platform_authenticator_status":"unavailable","webauthn_supported":true}',
+                'browser_features': json.dumps({
+                     'touch_supported': 'false',
+                     'platform_authenticator_status': 'unavailable',
+                     'webauthn_supported': 'true'
+                 }, separators=(',', ':')),
                 'sid': self._sid
             }
 
             if self.state.otp_secret:
                 data['passcode'] = self._hotp
 
-            res = self.api.request('POST', f'{self._base_url}/frame/v4/prompt', headers=self._get_headers(headers), data=data)
+            res = self._api.request('POST',
+                                   f'{self._base_url}/frame/v4/prompt',
+                                   headers=self._get_headers(headers),
+                                   data=data)
             if res.status_code == 200:
                 self._txid = res.json().get('response', {}).get('txid', '')
                 if self.state.otp_secret:
-                    self.db.otp_count += 1
+                    self._db.otp_count += 1
 
     def _get_mfa_details(self):
         if self.state.otp_secret:
@@ -181,10 +210,14 @@ class Duo(Plugin):
         }
         query = {
             'post_auth_action': 'OIDC_EXIT',
-            'browser_features': '{"touch_supported":false,"platform_authenticator_status":"unavailable","webauthn_supported":true}',
+            'browser_features': json.dumps({
+                 'touch_supported': 'false',
+                 'platform_authenticator_status': 'unavailable',
+                 'webauthn_supported': 'true'
+             }, separators=(',', ':')),
             'sid': self._sid
         }
-        res = self.api.request('GET', f'{self._base_url}/frame/v4/auth/prompt/data', headers=headers, query=query)
+        res = self._api.request('GET', f'{self._base_url}/frame/v4/auth/prompt/data', headers=headers, query=query)
         if res.status_code == 200:
             for method in res.json().get('response', {}).get('auth_method_order', []):
                 if method.get('factor', '') == 'Duo Push':
@@ -211,7 +244,7 @@ class Duo(Plugin):
             'sid': self._sid
         }
         for i in range(5):
-            res = self.api.request('POST', f'{self._base_url}/frame/v4/status', headers=headers, data=data)
+            res = self._api.request('POST', f'{self._base_url}/frame/v4/status', headers=headers, data=data)
             if res.status_code == 200:
                 status_enum = res.json().get('response', {}).get('status_enum', -1)
                 message_enum = res.json().get('message_enum', -1)
@@ -232,9 +265,9 @@ class Duo(Plugin):
                 elif status_enum == 15:  # Push Notification MFA Blocked
                     break
                 elif status_enum == 44:  # Prior Code
-                    self.db.otp_count+=5
+                    self._db.otp_count += 5
                     break
-                elif message_enum == 57: # Bad Request
+                elif message_enum == 57:  # Bad Request
                     print('Your Request was bad!')
                     break
                 else:  # IDK

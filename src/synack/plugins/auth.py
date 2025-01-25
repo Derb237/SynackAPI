@@ -21,12 +21,10 @@ class Auth(Plugin):
         if self.users.get_profile():
             return self.state.api_token
         csrf = self.get_login_csrf()
-        progress_token = None
         duo_auth_url = None
         grant_token = None
         if csrf:
             auth_response = self.get_authentication_response(csrf)
-            progress_token = auth_response.get('progress_token', '')
             duo_auth_url = auth_response.get('duo_auth_url', '')
         if duo_auth_url:
             grant_token = self.duo.get_grant_token(duo_auth_url)
@@ -57,7 +55,7 @@ class Auth(Plugin):
         return m.group(1)
 
     def get_authentication_response(self, csrf):
-        """Get progress_token and duo_auth_url from email and password login"""
+        """Get duo_auth_url from email and password login"""
         headers = {
             'X-CSRF-Token': csrf
         }
