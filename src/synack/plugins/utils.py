@@ -12,8 +12,8 @@ class Utils(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in []:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     @staticmethod
     def get_html_tag_value(field, text):

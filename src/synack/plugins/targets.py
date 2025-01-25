@@ -15,8 +15,8 @@ class Targets(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Api', 'Db', 'Scratchspace']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def build_codename_from_slug(self, slug):
         """Return a codename for a target given its slug
@@ -25,10 +25,10 @@ class Targets(Plugin):
         slug -- Slug of desired target
         """
         codename = 'NONE'
-        targets = self.db.find_targets(slug=slug)
+        targets = self._db.find_targets(slug=slug)
         if not targets:
             self.get_registered_summary()
-            targets = self.db.find_targets(slug=slug)
+            targets = self._db.find_targets(slug=slug)
         if targets:
             codename = targets[0].codename
         return codename
@@ -86,20 +86,20 @@ class Targets(Plugin):
     def build_slug_from_codename(self, codename):
         """Return a slug for a target given its codename"""
         slug = None
-        targets = self.db.find_targets(codename=codename)
+        targets = self._db.find_targets(codename=codename)
         if not targets:
             self.get_registered_summary()
-            targets = self.db.find_targets(codename=codename)
+            targets = self._db.find_targets(codename=codename)
         if targets:
             slug = targets[0].slug
         return slug
 
     def get_assessments(self):
         """Check which assessments have been completed"""
-        res = self.api.request('GET', 'assessments')
+        res = self._api.request('GET', 'assessments')
         if res.status_code == 200:
-            self.db.add_categories(res.json())
-            return self.db.categories
+            self._db.add_categories(res.json())
+            return self._db.categories
 
     def get_assets(self, target=None, asset_type=None, host_type=None, active='true',
                    scope=['in', 'discovered'], sort='location', sort_dir='asc',
@@ -107,10 +107,10 @@ class Targets(Plugin):
         """Get the assets (scope) of a target"""
         if target is None:
             if len(kwargs) > 0:
-                target = self.db.find_targets(**kwargs)
+                target = self._db.find_targets(**kwargs)
             else:
                 curr = self.get_connected()
-                target = self.db.find_targets(slug=curr.get('slug'))
+                target = self._db.find_targets(slug=curr.get('slug'))
 
         if type(scope) == str:
             scope = [scope]
@@ -140,10 +140,10 @@ class Targets(Plugin):
             if perPage is not None:
                 queries.append(f'perPage={perPage}')
 
-            res = self.api.request('GET', f'asset/v2/assets?{"&".join(queries)}')
+            res = self._api.request('GET', f'asset/v2/assets?{"&".join(queries)}')
             if res.status_code == 200:
-                if self.state.use_scratchspace:
-                    self.scratchspace.set_assets_file(res.text, target=target)
+                if self._state.use_scratchspace:
+                    self._scratchspace.set_assets_file(res.text, target=target)
                 return res.json()
 
     def get_attachments(self, target=None, **kwargs):
@@ -151,16 +151,16 @@ class Targets(Plugin):
         if target is None:
             if len(kwargs) == 0:
                 kwargs = {'codename': self.get_connected().get('codename')}
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 target = target[0]
-        res = self.api.request('GET', f'targets/{target.slug}/resources')
+        res = self._api.request('GET', f'targets/{target.slug}/resources')
         if res.status_code == 200:
             return res.json()
 
     def get_connected(self):
         """Return information about the currenly selected target"""
-        res = self.api.request('GET', 'launchpoint')
+        res = self._api.request('GET', 'launchpoint')
         if res.status_code == 200:
             j = res.json()
             slug = j.get('slug')
@@ -182,31 +182,31 @@ class Targets(Plugin):
         if target is None:
             if len(kwargs) == 0:
                 kwargs = {'codename': self.get_connected().get('codename')}
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 target = target[0]
-        res = self.api.request('GET', "listing_analytics/connections", query={"listing_id": target.slug})
+        res = self._api.request('GET', "listing_analytics/connections", query={"listing_id": target.slug})
         if res.status_code == 200:
             return res.json()["value"]
 
     def get_credentials(self, **kwargs):
         """Get Credentials for a target"""
-        target = self.db.find_targets(**kwargs)[0]
+        target = self._db.find_targets(**kwargs)[0]
         if target:
-            res = self.api.request('POST',
+            res = self._api.request('POST',
                                    f'asset/v1/organizations/{target.organization}' +
                                    f'/owners/listings/{target.slug}' +
-                                   f'/users/{self.state.user_id}' +
+                                   f'/users/{self._state.user_id}' +
                                    '/credentials')
             if res.status_code == 200:
                 return res.json()
 
     def get_query(self, status='registered', query_changes={}):
         """Get information about targets returned from a query"""
-        if not self.db.categories:
+        if not self._db.categories:
             self.get_assessments()
         categories = []
-        for category in self.db.categories:
+        for category in self._db.categories:
             if category.passed_practical and category.passed_written:
                 categories.append(category.id)
         query = {
@@ -216,17 +216,17 @@ class Targets(Plugin):
             'filter[category][]': categories
         }
         query.update(query_changes)
-        res = self.api.request('GET', 'targets', query=query)
+        res = self._api.request('GET', 'targets', query=query)
         if res.status_code == 200:
-            self.db.add_targets(res.json(), is_registered=True)
+            self._db.add_targets(res.json(), is_registered=True)
             return res.json()
 
     def get_registered_summary(self):
         """Get information on your registered targets"""
-        res = self.api.request('GET', 'targets/registered_summary')
+        res = self._api.request('GET', 'targets/registered_summary')
         ret = []
         if res.status_code == 200:
-            self.db.add_targets(res.json())
+            self._db.add_targets(res.json())
             ret = dict()
             for t in res.json():
                 ret[t['id']] = t
@@ -235,15 +235,15 @@ class Targets(Plugin):
     def get_scope(self, **kwargs):
         """Get the scope of a target"""
         if len(kwargs) > 0:
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
         else:
             curr = self.get_connected()
-            target = self.db.find_targets(slug=curr.get('slug'))
+            target = self._db.find_targets(slug=curr.get('slug'))
 
         if target:
             target = target[0]
             categories = dict()
-            for category in self.db.categories:
+            for category in self._db.categories:
                 categories[category.id] = category.name
             if categories[target.category].lower() == 'host':
                 return self.get_scope_host(target)
@@ -254,10 +254,10 @@ class Targets(Plugin):
         """Get the scope of a Host target"""
         if target is None:
             if len(kwargs) > 0:
-                targets = self.db.find_targets(**kwargs)
+                targets = self._db.find_targets(**kwargs)
             else:
                 curr = self.get_connected()
-                targets = self.db.find_targets(slug=curr.get('slug'))
+                targets = self._db.find_targets(slug=curr.get('slug'))
             if targets:
                 target = next(iter(targets), None)
 
@@ -277,8 +277,8 @@ class Targets(Plugin):
             scope.discard(None)
 
             if len(scope) > 0:
-                if self.state.use_scratchspace:
-                    self.scratchspace.set_hosts_file(scope, target=target)
+                if self._state.use_scratchspace:
+                    self._scratchspace.set_hosts_file(scope, target=target)
 
         return scope
 
@@ -286,10 +286,10 @@ class Targets(Plugin):
         """Get the scope of a Web target"""
         if target is None:
             if len(kwargs) > 0:
-                targets = self.db.find_targets(**kwargs)
+                targets = self._db.find_targets(**kwargs)
             else:
                 curr = self.get_connected()
-                targets = self.db.find_targets(slug=curr.get('slug'))
+                targets = self._db.find_targets(slug=curr.get('slug'))
             if targets:
                 target = next(iter(targets), None)
 
@@ -312,8 +312,8 @@ class Targets(Plugin):
                             })
 
             if len(scope) > 0:
-                if self.state.use_scratchspace:
-                    self.scratchspace.set_burp_file(self.build_scope_web_burp(scope), target=target)
+                if self._state.use_scratchspace:
+                    self._scratchspace.set_burp_file(self.build_scope_web_burp(scope), target=target)
 
         return scope
 
@@ -324,11 +324,11 @@ class Targets(Plugin):
         if target is None:
             if len(kwargs) == 0:
                 kwargs = {'codename': self.get_connected().get('codename')}
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 target = target[0]
         query = {"listing_id": target.slug, "status": status}
-        res = self.api.request('GET', "listing_analytics/categories", query=query)
+        res = self._api.request('GET', "listing_analytics/categories", query=query)
         if res.status_code == 200:
             return res.json()["value"]
 
@@ -337,13 +337,13 @@ class Targets(Plugin):
         if target is None:
             if len(kwargs) == 0:
                 kwargs = {'codename': self.get_connected().get('codename')}
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 target = target[0]
         query = {"listing_id": target.slug}
         if hours_ago:
             query["period"] = f"{hours_ago}h"
-        res = self.api.request('GET', "listing_analytics/submissions", query=query)
+        res = self._api.request('GET', "listing_analytics/submissions", query=query)
         if res.status_code == 200:
             return res.json()["value"]
 
@@ -367,12 +367,12 @@ class Targets(Plugin):
         elif len(kwargs) == 0:
             slug = ''
         else:
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 slug = target[0].slug
 
         if slug is not None:
-            res = self.api.request('PUT', 'launchpoint', data={'listing_id': slug})
+            res = self._api.request('PUT', 'launchpoint', data={'listing_id': slug})
             if res.status_code == 200:
                 return self.get_connected()
 
@@ -383,7 +383,7 @@ class Targets(Plugin):
         data = '{"ResearcherListing":{"terms":1}}'
         ret = []
         for t in targets:
-            res = self.api.request('POST',
+            res = self._api.request('POST',
                                    f'targets/{t["slug"]}/signup',
                                    data=data)
             if res.status_code == 200:

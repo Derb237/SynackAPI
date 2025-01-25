@@ -13,13 +13,13 @@ class Auth(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Api', 'Db', 'Duo', 'Users']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def get_api_token(self):
         """Log in to get a new API token."""
-        if self.users.get_profile():
-            return self.state.api_token
+        if self._users.get_profile():
+            return self._state.api_token
         csrf = self.get_login_csrf()
         duo_auth_url = None
         grant_token = None
@@ -27,7 +27,7 @@ class Auth(Plugin):
             auth_response = self.get_authentication_response(csrf)
             duo_auth_url = auth_response.get('duo_auth_url', '')
         if duo_auth_url:
-            grant_token = self.duo.get_grant_token(duo_auth_url)
+            grant_token = self._duo.get_grant_token(duo_auth_url)
         if grant_token:
             url = 'https://platform.synack.com/'
             headers = {
@@ -36,20 +36,19 @@ class Auth(Plugin):
             query = {
                 "grant_token": grant_token
             }
-            res = self.api.request('GET',
+            res = self._api.request('GET',
                                    url + 'token',
                                    headers=headers,
                                    query=query)
             if res.status_code == 200:
                 j = res.json()
-                self.db.api_token = j.get('access_token')
-                self.state.api_token = j.get('access_token')
+                self._db.api_token = j.get('access_token')
                 self.set_login_script()
                 return j.get('access_token')
 
     def get_login_csrf(self):
         """Get the CSRF Token from the login page"""
-        res = self.api.request('GET', 'https://login.synack.com')
+        res = self._api.request('GET', 'https://login.synack.com')
         m = re.search('<meta name="csrf-token" content="([^"]*)"',
                       res.text)
         return m.group(1)
@@ -60,10 +59,10 @@ class Auth(Plugin):
             'X-CSRF-Token': csrf
         }
         data = {
-            'email': self.state.email,
-            'password': self.state.password
+            'email': self._state.email,
+            'password': self._state.password
         }
-        res = self.api.login('POST',
+        res = self._api.login('POST',
                              'authenticate',
                              headers=headers,
                              data=data)
@@ -76,12 +75,16 @@ class Auth(Plugin):
 
     def get_notifications_token(self):
         """Request a new Notifications Token"""
-        res = self.api.request('GET', 'users/notifications_token')
+        res = self._api.request('GET', 'users/notifications_token')
         if res.status_code == 200:
             j = res.json()
-            self.db.notifications_token = j['token']
-            self.state.notifications_token = j['token']
+            self._db.notifications_token = j['token']
             return j['token']
+
+    def set_api_token_invalid(self):
+        res = self._api.request('POST', 'logout')
+        if res.status_code == 200:
+            self._db.api_token = ''
 
     def set_login_script(self):
         script = "let forceLogin = () => {" +\
@@ -92,7 +95,7 @@ class Auth(Plugin):
             "(function() {" +\
             "sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
             ",'" +\
-            self.state.api_token +\
+            self._state.api_token +\
             "');" +\
             "setTimeout(forceLogin,60000);" +\
             "let btn = document.createElement('button');" +\
@@ -104,7 +107,7 @@ class Auth(Plugin):
             "document.getElementsByClassName('onboarding-form')[0]" +\
             ".appendChild(btn)}" +\
             ")();"
-        with open(self.state.config_dir / 'login.js', 'w') as fp:
+        with open(self._state.config_dir / 'login.js', 'w') as fp:
             fp.write(script)
 
         return script

@@ -19,23 +19,23 @@ class Alerts(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Db']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def email(self, subject='Test Alert', message='This is a test'):
         message += f'\nTime: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
         msg = email.message.EmailMessage()
         msg.set_content(message)
         msg['Subject'] = subject
-        msg['From'] = self.state.smtp_email_from
-        msg['To'] = self.state.smtp_email_to
+        msg['From'] = self._state.smtp_email_from
+        msg['To'] = self._state.smtp_email_to
 
-        if self.state.smtp_starttls:
-            server = smtplib.SMTP_SSL(self.state.smtp_server, self.state.smtp_port)
+        if self._state.smtp_starttls:
+            server = smtplib.SMTP_SSL(self._state.smtp_server, self._state.smtp_port)
         else:
-            server = smtplib.SMTP(self.state.smtp_server, self.state.smtp_port)
+            server = smtplib.SMTP(self._state.smtp_server, self._state.smtp_port)
 
-        server.login(self.state.smtp_username, self.state.smtp_password)
+        server.login(self._state.smtp_username, self._state.smtp_password)
         server.send_message(msg)
 
     def sanitize(self, message):
@@ -61,7 +61,7 @@ class Alerts(Plugin):
 
     def slack(self, message='This is a test', channel=None):
         if channel is None:
-            channel = self.state.slack_channel
+            channel = self._state.slack_channel
         warnings.filterwarnings("ignore")
         requests.post('https://slack.com/api/chat.postMessage',
                       data=json.dumps({
@@ -69,7 +69,7 @@ class Alerts(Plugin):
                           'channel': channel,
                       }),
                       headers={
-                          'Authorization': f'Bearer {self.state.slack_app_token}',
+                          'Authorization': f'Bearer {self._state.slack_app_token}',
                           'Content-Type': 'application/json'
                       },
                       verify=False)

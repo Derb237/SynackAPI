@@ -13,7 +13,7 @@ class Api(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for plugin in ['Debug', 'Db']:
-            setattr(self, plugin.lower(), self.registry.get(plugin)(self.state))
+            setattr(self, '_'+plugin.lower(), self._registry.get(plugin)(self._state))
 
     def login(self, method, path, **kwargs):
         """Modify API Request for Login
@@ -55,13 +55,12 @@ class Api(Plugin):
 
         if not kwargs.get('headers'):
             kwargs['headers'] = dict()
-        auth = "Bearer " + self.state.notifications_token
+        auth = "Bearer " + self._state.notifications_token
         kwargs['headers']['Authorization'] = auth
 
         res = self.request(method, url, **kwargs)
         if res.status_code == 422:
-            self.db.notifications_token = ''
-            self.state.notifications_token = ''
+            self._db.notifications_token = ''
         return res
 
     def request(self, method, path, attempts=0, **kwargs):
@@ -85,12 +84,12 @@ class Api(Plugin):
 
         warnings.filterwarnings("ignore")
         verify = False
-        proxies = self.state.proxies if self.state.use_proxies else None
+        proxies = self._state.proxies if self._state.use_proxies else None
 
         if 'synack.com/api/' in url:
             headers = {
-                'Authorization': f'Bearer {self.state.api_token}',
-                'user_id': self.state.user_id
+                'Authorization': f'Bearer {self._state.api_token}',
+                'user_id': self._state.user_id
             }
         else:
             headers = dict()
@@ -100,44 +99,44 @@ class Api(Plugin):
         data = kwargs.get('data')
 
         if method.upper() == 'GET':
-            res = self.state.session.get(url,
+            res = self._state.session.get(url,
                                          headers=headers,
                                          proxies=proxies,
                                          params=query,
                                          verify=verify)
         elif method.upper() == 'HEAD':
-            res = self.state.session.head(url,
+            res = self._state.session.head(url,
                                           headers=headers,
                                           proxies=proxies,
                                           params=query,
                                           verify=verify)
         elif method.upper() == 'PATCH':
-            res = self.state.session.patch(url,
+            res = self._state.session.patch(url,
                                            json=data,
                                            headers=headers,
                                            proxies=proxies,
                                            verify=verify)
         elif method.upper() == 'POST':
             if 'urlencoded' in headers.get('Content-Type', ''):
-                res = self.state.session.post(url,
+                res = self._state.session.post(url,
                                               data=data,
                                               headers=headers,
                                               proxies=proxies,
                                               verify=verify)
             else:
-                res = self.state.session.post(url,
+                res = self._state.session.post(url,
                                               json=data,
                                               headers=headers,
                                               proxies=proxies,
                                               verify=verify)
         elif method.upper() == 'PUT':
-            res = self.state.session.put(url,
+            res = self._state.session.put(url,
                                          headers=headers,
                                          proxies=proxies,
                                          params=data,
                                          verify=verify)
 
-        self.debug.log("Network Request",
+        self._debug.log("Network Request",
                        f"{res.status_code} -- {method.upper()} -- {url}" +
                        f"\n\tHeaders: {headers}" +
                        f"\n\tQuery: {query}" +

@@ -18,7 +18,7 @@ class Duo(Plugin):
         for plugin in ['Api', 'Db', 'Utils']:
             setattr(self,
                     '_'+plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    self._registry.get(plugin)(self._state))
 
         self._auth_url = None
         self._base_url = None
@@ -180,7 +180,7 @@ class Duo(Plugin):
                 'sid': self._sid
             }
 
-            if self.state.otp_secret:
+            if self._state.otp_secret:
                 data['passcode'] = self._hotp
 
             res = self._api.request('POST',
@@ -189,13 +189,13 @@ class Duo(Plugin):
                                    data=data)
             if res.status_code == 200:
                 self._txid = res.json().get('response', {}).get('txid', '')
-                if self.state.otp_secret:
+                if self._state.otp_secret:
                     self._db.otp_count += 1
 
     def _get_mfa_details(self):
-        if self.state.otp_secret:
+        if self._state.otp_secret:
             self._device = 'null'
-            self._hotp = pyotp.HOTP(s=self.state.otp_secret).generate_otp(self.state.otp_count)
+            self._hotp = pyotp.HOTP(s=self._state.otp_secret).generate_otp(self._state.otp_count)
             self._factor = 'Passcode'
             return
 
@@ -248,7 +248,7 @@ class Duo(Plugin):
             if res.status_code == 200:
                 status_enum = res.json().get('response', {}).get('status_enum', -1)
                 message_enum = res.json().get('message_enum', -1)
-                self._status = res.json().get('response', {}).get('status', -1)
+                self._status = res.json().get('response', {}).get('result', 'UNKNOWN')
                 if status_enum == 5 or self._status == 'SUCCESS':  # Valid Code
                     break
                 elif status_enum == 6:  # Push Notification Declined (Normal)

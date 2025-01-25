@@ -14,11 +14,11 @@ class Templates(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Alerts', 'Db', 'Targets']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def build_filepath(self, mission, generic_ok=False):
-        f = self.state.template_dir
+        f = self._state.template_dir
         f = f / self.build_safe_name(mission['taskType'])
         if mission.get('asset'):
             f = f / self.build_safe_name(mission['asset'])
@@ -34,7 +34,7 @@ class Templates(Plugin):
     def build_replace_variables(self, text, target=None, **kwargs):
         """Replaces known variables within text"""
         if target is None:
-            target = self.db.find_targets(**kwargs)
+            target = self._db.find_targets(**kwargs)
             if target:
                 target = target[0]
 
@@ -44,7 +44,7 @@ class Templates(Plugin):
 
     def build_safe_name(self, name):
         """Simplify a name to use for a file path"""
-        name = self.alerts.sanitize(name)
+        name = self._alerts.sanitize(name)
         name = name.lower()
         name = re.sub('[^a-z0-9]', '_', name)
         return re.sub('_+', '_', name)

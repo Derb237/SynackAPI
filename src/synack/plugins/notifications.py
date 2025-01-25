@@ -11,12 +11,12 @@ class Notifications(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Api', 'Db']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def get(self):
         """Get a list of recent notifications"""
-        res = self.api.notifications('GET',
+        res = self._api.notifications('GET',
                                      'notifications?meta=1')
         if res.status_code == 200:
             return res.json()
@@ -24,9 +24,9 @@ class Notifications(Plugin):
     def get_unread_count(self):
         """Get the number of unread notifications"""
         query = {
-            "authorization_token": self.state.notifications_token
+            "authorization_token": self._state.notifications_token
         }
-        res = self.api.notifications('GET',
+        res = self._api.notifications('GET',
                                      'notifications/unread_count',
                                      query=query)
         if res.status_code == 200:

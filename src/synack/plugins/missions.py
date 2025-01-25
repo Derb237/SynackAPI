@@ -16,8 +16,8 @@ class Missions(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Api', 'Db', 'Targets', 'Templates']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def build_order(self, missions, sort="payout-high"):
         """Sort a list of missions by what's desired first
@@ -99,7 +99,7 @@ class Missions(Plugin):
         }
         if listing_uids:
             query["listingUids"] = listing_uids
-        res = self.api.request('GET',
+        res = self._api.request('GET',
                                'tasks/v2/tasks',
                                query=query)
         if res.status_code == 200:
@@ -138,7 +138,7 @@ class Missions(Plugin):
         }
         if listing_uids:
             query["listingUid"] = listing_uids
-        res = self.api.request('HEAD',
+        res = self._api.request('HEAD',
                                'tasks/v1/tasks',
                                query=query)
         if res.status_code == 204:
@@ -151,7 +151,7 @@ class Missions(Plugin):
         Arguments:
         mission -- A single mission
         """
-        evidences = self.api.request('GET',
+        evidences = self._api.request('GET',
                                      'tasks/v2/tasks/' +
                                      mission['id'] +
                                      '/evidences')
@@ -170,14 +170,14 @@ class Missions(Plugin):
 
     def get_wallet_claimed(self):
         """Get Current Claimed Amount for Mission Wallet"""
-        res = self.api.request('GET',
+        res = self._api.request('GET',
                                'tasks/v2/researcher/claimed_amount')
         if res.status_code == 200:
             return int(res.json().get('claimedAmount', '0'))
 
     def get_wallet_limit(self):
         """Get Current Mission Wallet Limit"""
-        res = self.api.request('GET',
+        res = self._api.request('GET',
                                'profiles/me')
         if res.status_code == 200:
             return int(res.json().get('claim_limit', '0'))
@@ -205,7 +205,7 @@ class Missions(Plugin):
         mission -- A single mission
         """
         if template is None:
-            template = self.templates.get_file(mission)
+            template = self._templates.get_file(mission)
         if template:
             curr = self.get_evidences(mission)
             safe = True
@@ -216,7 +216,7 @@ class Missions(Plugin):
                         safe = False
                         break
             if safe:
-                res = self.api.request('PATCH',
+                res = self._api.request('PATCH',
                                        'tasks/v2/tasks/' +
                                        mission['id'] +
                                        '/evidences',
@@ -243,7 +243,7 @@ class Missions(Plugin):
         payout = str(mission["payout"]["amount"])
         title = mission["title"]
 
-        res = self.api.request('POST',
+        res = self._api.request('POST',
                                'tasks/v1' +
                                '/organizations/' + orgId +
                                '/listings/' + listingId +

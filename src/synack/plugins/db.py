@@ -23,7 +23,7 @@ from .base import Plugin
 class Db(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sqlite_db = self.state.config_dir / 'synackapi.db'
+        self.sqlite_db = self._state.config_dir / 'synackapi.db'
 
         self.set_migration()
 
@@ -414,15 +414,15 @@ class Db(Plugin):
 
     @property
     def proxies(self):
-        if self.state.http_proxy is None:
+        if self._state.http_proxy is None:
             http_proxy = self.get_config('http_proxy')
         else:
-            http_proxy = self.state.http_proxy
+            http_proxy = self._state.http_proxy
 
-        if self.state.https_proxy is None:
+        if self._state.https_proxy is None:
             https_proxy = self.get_config('https_proxy')
         else:
-            https_proxy = self.state.https_proxy
+            https_proxy = self._state.https_proxy
 
         return {
             'http': http_proxy,

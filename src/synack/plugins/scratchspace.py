@@ -13,15 +13,15 @@ class Scratchspace(Plugin):
         super().__init__(*args, **kwargs)
         for plugin in ['Api', 'Db']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def build_filepath(self, filename, target=None, codename=None):
         if target:
             codename = target.codename
 
         if codename:
-            f = self.state.scratchspace_dir
+            f = self._state.scratchspace_dir
             f = f / codename
             f.mkdir(parents=True, exist_ok=True)
             f = f / filename
@@ -55,7 +55,7 @@ class Scratchspace(Plugin):
                     ans = input(f'{attachment.get("filename")} exists. Overwrite? [y/N]: ')
                     overwrite_current = ans.lower().startswith('y')
                 if overwrite_current or not dest_file.exists():
-                    res = self.api.request('GET', attachment.get('url'))
+                    res = self._api.request('GET', attachment.get('url'))
                     if res.status_code == 200:
                         with open(dest_file, 'wb') as fp:
                             fp.write(res.content)
