@@ -5,6 +5,7 @@ from .api import Api
 from .auth import Auth
 from .db import Db
 from .debug import Debug
+from .duo import Duo
 from .missions import Missions
 from .notifications import Notifications
 from .scratchspace import Scratchspace

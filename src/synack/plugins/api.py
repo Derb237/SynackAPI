@@ -64,7 +64,7 @@ class Api(Plugin):
             self.state.notifications_token = ''
         return res
 
-    def request(self, method, path, include_std_headers=True, attempt=0, **kwargs):
+    def request(self, method, path, attempts=0, **kwargs):
         """Send API Request
 
         Arguments:
@@ -72,6 +72,7 @@ class Api(Plugin):
                   (GET, POST, etc.)
         path -- API endpoint path
                 Can be an endpoint on platform.synack.com or a full URL
+        attempts -- Number of times the request has been attempted
         headers -- Additional headers to be added for only this request
         data -- POST body dictionary
         query -- GET query string dictionary
@@ -86,7 +87,7 @@ class Api(Plugin):
         verify = False
         proxies = self.state.proxies if self.state.use_proxies else None
 
-        if include_std_headers:
+        if 'synack.com/api/' in url:
             headers = {
                 'Authorization': f'Bearer {self.state.api_token}',
                 'user_id': self.state.user_id
@@ -148,5 +149,5 @@ class Api(Plugin):
             if attempts < 5:
                 time.sleep(30)
                 attempts += 1
-                return self.request(method, path, include_std_headers, attempts, **kwargs)
+                return self.request(method, path, attempts, **kwargs)
         return res

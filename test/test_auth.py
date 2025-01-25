@@ -24,17 +24,6 @@ class AuthTestCase(unittest.TestCase):
         self.auth.db = MagicMock()
         self.auth.users = MagicMock()
 
-    def test_build_otp(self):
-        """Should generate a OTP"""
-        pyotp.TOTP = MagicMock()
-        self.auth.db.otp_secret = "123"
-        self.auth.build_otp()
-        self.assertEqual(7, pyotp.TOTP.return_value.digits)
-        self.assertEqual(10, pyotp.TOTP.return_value.interval)
-        self.assertEqual('synack', pyotp.TOTP.return_value.issuer)
-        pyotp.TOTP.assert_called_with('123')
-        pyotp.TOTP.return_value.now.assert_called_with()
-
     def test_get_api_token(self):
         """Should complete the login workflow when check fails"""
         self.auth.db.api_token = ""
@@ -45,7 +34,6 @@ class AuthTestCase(unittest.TestCase):
         self.auth.get_login_progress_token = MagicMock()
         self.auth.get_login_progress_token.return_value = "pt_rsaemnt"
 
-        self.auth.get_login_grant_token = MagicMock(return_value="gt_fwlnm")
         self.auth.api.request.return_value.status_code = 200
         ret_json = {"access_token": "api_lwfaume"}
         self.auth.api.request.return_value.json.return_value = ret_json
@@ -53,8 +41,6 @@ class AuthTestCase(unittest.TestCase):
         self.auth.get_login_csrf.assert_called_with()
         self.auth.set_login_script.assert_called_with()
         self.auth.get_login_progress_token.assert_called_with("csrf_fwlnm")
-        self.auth.get_login_grant_token.assert_called_with("csrf_fwlnm",
-                                                           "pt_rsaemnt")
 
     def test_get_api_token_login_success(self):
         """Should return the database token when check succeeds"""
@@ -64,27 +50,6 @@ class AuthTestCase(unittest.TestCase):
         self.auth.users.get_profile.return_value = {"user_id": "john"}
         self.assertEqual("qweqweqwe", self.auth.get_api_token())
 
-    def test_get_login_grant_token(self):
-        """Should get the grant token from valid authy TOTP"""
-        self.auth.build_otp = MagicMock(return_value="12345")
-        self.auth.api.login.return_value.status_code = 200
-        self.auth.api.login.return_value.json.return_value = {
-            "grant_token": "qwfars"
-        }
-        headers = {
-                      "X-Csrf-Token": "abcde"
-        }
-        data = {
-            "authy_token": "12345",
-            "progress_token": "789456123"
-        }
-
-        returned_gt = self.auth.get_login_grant_token('abcde', '789456123')
-        self.assertEqual("qwfars", returned_gt)
-        self.auth.api.login.assert_called_with("POST",
-                                               "authenticate",
-                                               headers=headers,
-                                               data=data)
 
     def test_get_login_progress_token(self):
         """Should get the progress token from valid creds"""
