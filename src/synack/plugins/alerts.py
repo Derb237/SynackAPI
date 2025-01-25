@@ -60,7 +60,7 @@ class Alerts(Plugin):
         return message
 
     def slack(self, message='This is a test', channel=None):
-        if channel == None:
+        if channel is None:
             channel = self.state.slack_channel
         warnings.filterwarnings("ignore")
         requests.post('https://slack.com/api/chat.postMessage',

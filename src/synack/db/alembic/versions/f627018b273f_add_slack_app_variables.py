@@ -21,6 +21,7 @@ def upgrade():
         batch_op.add_column(sa.Column('slack_app_token', sa.VARCHAR(100), server_default=''))
         batch_op.add_column(sa.Column('slack_channel', sa.VARCHAR(100), server_default=''))
 
+
 def downgrade():
     with op.batch_alter_table('config') as batch_op:
         batch_op.drop_column('slack_app_token')

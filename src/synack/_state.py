@@ -44,7 +44,7 @@ class State(object):
     @property
     def smtp_email_from(self) -> str:
         ret = self._smtp_email_from
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_email_from
         return ret
 
@@ -55,7 +55,7 @@ class State(object):
     @property
     def smtp_email_to(self) -> str:
         ret = self._smtp_email_to
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_email_to
         return ret
 
@@ -66,7 +66,7 @@ class State(object):
     @property
     def smtp_password(self) -> str:
         ret = self._smtp_password
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_password
         return ret
 
@@ -77,7 +77,7 @@ class State(object):
     @property
     def smtp_port(self) -> str:
         ret = self._smtp_port
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_port
         return ret
 
@@ -88,7 +88,7 @@ class State(object):
     @property
     def smtp_server(self) -> str:
         ret = self._smtp_server
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_server
         return ret
 
@@ -99,7 +99,7 @@ class State(object):
     @property
     def smtp_starttls(self) -> str:
         ret = self._smtp_starttls
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_starttls
         return ret
 
@@ -110,7 +110,7 @@ class State(object):
     @property
     def smtp_username(self) -> str:
         ret = self._smtp_username
-        if ret == None:
+        if ret is None:
             ret = self._db.smtp_username
         return ret
 
@@ -121,7 +121,7 @@ class State(object):
     @property
     def api_token(self) -> str:
         ret = self._api_token
-        if ret == None:
+        if ret is None:
             ret = self._db.api_token
         return ret
 
@@ -146,7 +146,7 @@ class State(object):
     @property
     def template_dir(self) -> pathlib.PosixPath:
         ret = self._template_dir
-        if ret == None:
+        if ret is None:
             ret = self._db.template_dir
         ret.mkdir(parents=True, exist_ok=True)
         return ret
@@ -160,7 +160,7 @@ class State(object):
     @property
     def scratchspace_dir(self) -> pathlib.PosixPath:
         ret = self._scratchspace_dir
-        if ret == None:
+        if ret is None:
             ret = self._db.scratchspace_dir
         ret.mkdir(parents=True, exist_ok=True)
         return ret
@@ -174,7 +174,7 @@ class State(object):
     @property
     def debug(self) -> bool:
         ret = self._debug
-        if ret == None:
+        if ret is None:
             ret = self._db.debug
         return ret
 
@@ -199,7 +199,7 @@ class State(object):
     @property
     def notifications_token(self) -> str:
         ret = self._notifications_token
-        if ret == None:
+        if ret is None:
             ret = self._db.notifications_token
         return ret
 
@@ -210,7 +210,7 @@ class State(object):
     @property
     def use_proxies(self) -> bool:
         ret = self._use_proxies
-        if ret == None:
+        if ret is None:
             ret = self._db.use_proxies
         return ret
 
@@ -221,7 +221,7 @@ class State(object):
     @property
     def use_scratchspace(self) -> bool:
         ret = self._use_scratchspace
-        if ret == None:
+        if ret is None:
             self._db.use_scratchspace
         return ret
 
@@ -232,7 +232,7 @@ class State(object):
     @property
     def http_proxy(self) -> str:
         ret = self._http_proxy
-        if ret == None:
+        if ret is None:
             ret = self._db.http_proxy
         return ret
 
@@ -243,7 +243,7 @@ class State(object):
     @property
     def https_proxy(self) -> str:
         ret = self._https_proxy
-        if ret == None:
+        if ret is None:
             ret = self._db.https_proxy
         return ret
 
@@ -261,7 +261,7 @@ class State(object):
     @property
     def otp_secret(self) -> str:
         ret = self._otp_secret
-        if ret == None:
+        if ret is None:
             ret = self._db.otp_secret
         return ret
 
@@ -272,7 +272,7 @@ class State(object):
     @property
     def otp_count(self) -> str:
         ret = self._otp_count
-        if ret == None:
+        if ret is None:
             ret = self._db.otp_count
         return ret
 
@@ -283,7 +283,7 @@ class State(object):
     @property
     def email(self) -> str:
         ret = self._email
-        if ret == None:
+        if ret is None:
             ret = self._db.email
         return ret
 
@@ -294,7 +294,7 @@ class State(object):
     @property
     def slack_app_token(self) -> str:
         ret = self._slack_app_token
-        if ret == None:
+        if ret is None:
             ret = self._db.slack_app_token
         return ret
 
@@ -305,7 +305,7 @@ class State(object):
     @property
     def slack_channel(self) -> str:
         ret = self._slack_channel
-        if ret == None:
+        if ret is None:
             ret = self._db.slack_channel
         return ret
 
@@ -316,7 +316,7 @@ class State(object):
     @property
     def slack_url(self) -> str:
         ret = self._slack_url
-        if ret == None:
+        if ret is None:
             ret = self._db.slack_url
         return ret
 
@@ -327,7 +327,7 @@ class State(object):
     @property
     def password(self) -> str:
         ret = self._password
-        if ret == None:
+        if ret is None:
             ret = self._db.password
         return ret
 
@@ -338,7 +338,7 @@ class State(object):
     @property
     def user_id(self) -> str:
         ret = self._user_id
-        if ret == None:
+        if ret is None:
             ret = self._db.user_id
         return ret
 

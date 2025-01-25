@@ -252,9 +252,22 @@ class Auth(Plugin):
 
         for i in range(5):
             res = self.api.request('POST', f'{push_vars.get("url_base", "")}/frame/v4/status', include_std_headers=False, headers=headers, data=data)
-            status = res.json().get('response', {}).get('result', '')
-            if status == 'SUCCESS':
-                break
+            if res.status_code == 200:
+                status_enum = res.json().get('response', {}).get('status_enum', -1)
+                status = res.json().get('response', {}).get('status', -1)
+                if status_enum == 5 or status == 'SUCCESS':     # Valid Code
+                    break
+                elif status_enum == 11:  # Bad Code (or Future Code by 20+)
+                    print("Bad OTP Code Sent")
+                    print(res)
+                    print(res.json())
+                elif status_enum == 44:  # Prior Code
+                    self.db.otp_count+=5
+                    break
+                elif status_enum == -1:  # Code Changed
+                    print("Duo OTP Status Code Changed")
+                    print(res)
+                    print(res.json())
             time.sleep(5)
 
     def get_duo_push_grant_token(self, push_vars):

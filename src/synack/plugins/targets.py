@@ -232,7 +232,7 @@ class Targets(Plugin):
                 ret[t['id']] = t
         return ret
 
-    def get_scope(self, add_to_db=False, **kwargs):
+    def get_scope(self, **kwargs):
         """Get the scope of a target"""
         if len(kwargs) > 0:
             target = self.db.find_targets(**kwargs)
@@ -246,11 +246,11 @@ class Targets(Plugin):
             for category in self.db.categories:
                 categories[category.id] = category.name
             if categories[target.category].lower() == 'host':
-                return self.get_scope_host(target, add_to_db=add_to_db)
+                return self.get_scope_host(target)
             elif categories[target.category].lower() in ['web application', 'mobile']:
-                return self.get_scope_web(target, add_to_db=add_to_db)
+                return self.get_scope_web(target)
 
-    def get_scope_host(self, target=None, add_to_db=False, **kwargs):
+    def get_scope_host(self, target=None, **kwargs):
         """Get the scope of a Host target"""
         if target is None:
             if len(kwargs) > 0:
@@ -277,14 +277,12 @@ class Targets(Plugin):
             scope.discard(None)
 
             if len(scope) > 0:
-                if add_to_db:
-                    self.db.add_ips(self.build_scope_host_db(target.slug, scope))
                 if self.state.use_scratchspace:
                     self.scratchspace.set_hosts_file(scope, target=target)
 
         return scope
 
-    def get_scope_web(self, target=None, add_to_db=False, **kwargs):
+    def get_scope_web(self, target=None, **kwargs):
         """Get the scope of a Web target"""
         if target is None:
             if len(kwargs) > 0:
@@ -314,8 +312,6 @@ class Targets(Plugin):
                             })
 
             if len(scope) > 0:
-                if add_to_db:
-                    self.db.add_urls(self.build_scope_web_db(scope))
                 if self.state.use_scratchspace:
                     self.scratchspace.set_burp_file(self.build_scope_web_burp(scope), target=target)
 

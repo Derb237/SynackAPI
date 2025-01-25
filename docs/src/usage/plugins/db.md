@@ -82,7 +82,7 @@ Additionally, some properties can be overridden by the State, which allows you t
 > 
 > | Arguments | Type | Description
 > | --- | --- | ---
-> | `results` | list(dict) | A list of dictionaries containing results from some scan, Hydra, etc.
+> | `results` | list(dict) | A list of dictionaries containing results from some scan, etc.
 >
 >> Examples
 >> ```python3
@@ -132,7 +132,7 @@ Additionally, some properties can be overridden by the State, which allows you t
 > 
 > | Arguments | Type | Description
 > | --- | --- | ---
-> | `results` | list(dict) | A list of dictionaries containing results from some scan, Hydra, etc.
+> | `results` | list(dict) | A list of dictionaries containing results from some scan, etc.
 >
 >> Examples
 >> ```python3
@@ -178,7 +178,7 @@ Additionally, some properties can be overridden by the State, which allows you t
 > | --- | --- | ---
 > | `port` | int | Port number to search for (443, 80, 25, etc.)
 > | `protocol` | str | Protocol to search for (tcp, udp, etc.)
-> | `source` | str | Source to search for (hydra, nmap, etc.)
+> | `source` | str | Source to search for (masscan, nmap, etc.)
 > | `ip` | str | IP Address to search for
 > | `kwargs` | kwargs | Any attribute of the Target Database Model (codename, slug, is_active, etc.)
 >
@@ -187,7 +187,7 @@ Additionally, some properties can be overridden by the State, which allows you t
 >> >>> h.db.find_ports(codename="SLEEPYPUPPY")
 >> [
 >>   {
->>     'ip': '1.2.3.4', 'source': 'hydra', 'target': '123hg912',
+>>     'ip': '1.2.3.4', 'source': 'masscan', 'target': '123hg912',
 >>       'ports': [
 >>         { 'open': True, 'port': '443', 'protocol': 'tcp', 'service': 'https - Wordpress', 'updated': 1654840021 },
 >>         ...

@@ -19,7 +19,6 @@
     - [Auth](./usage/plugins/auth.md)
     - [Db](./usage/plugins/db.md)
     - [Debug](./usage/plugins/debug.md)
-    - [Hydra](./usage/plugins/hydra.md)
     - [Missions](./usage/plugins/missions.md)
     - [Notifications](./usage/plugins/notifications.md)
     - [Scratchspace](./usage/plugins/scratchspace.md)

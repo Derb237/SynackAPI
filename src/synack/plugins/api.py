@@ -3,6 +3,7 @@
 Functions to handle interacting with the Synack APIs
 """
 
+import time
 import warnings
 
 from .base import Plugin
@@ -63,7 +64,7 @@ class Api(Plugin):
             self.state.notifications_token = ''
         return res
 
-    def request(self, method, path, include_std_headers=True, **kwargs):
+    def request(self, method, path, include_std_headers=True, attempt=0, **kwargs):
         """Send API Request
 
         Arguments:
@@ -142,4 +143,10 @@ class Api(Plugin):
                        f"\n\tData: {data}" +
                        f"\n\tContent: {res.content}")
 
+        if res.status_code == 429:
+            attempts = kwargs.get('attempts', 0)
+            if attempts < 5:
+                time.sleep(30)
+                attempts += 1
+                return self.request(method, path, include_std_headers, attempts, **kwargs)
         return res

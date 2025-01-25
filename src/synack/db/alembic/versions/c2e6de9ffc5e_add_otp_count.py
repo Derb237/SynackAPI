@@ -20,6 +20,7 @@ def upgrade():
     with op.batch_alter_table('config') as batch_op:
         batch_op.add_column(sa.Column('otp_count', sa.INTEGER, server_default='0'))
 
+
 def downgrade():
     with op.batch_alter_table('config') as batch_op:
         batch_op.drop_column('otp_count')

@@ -479,19 +479,7 @@ class TargetsTestCase(unittest.TestCase):
         self.targets.db.categories = [Category(id=1, name='Host')]
         out = self.targets.get_scope(slug='1392g78yr')
         self.targets.db.find_targets.assert_called_with(slug='1392g78yr')
-        self.targets.get_scope_host.assert_called_with(tgt, add_to_db=False)
-        self.assertEquals(out, 'HostScope')
-
-    def test_get_scope_for_host_add_to_db(self):
-        """Should get the scope for a Host when given Host information"""
-        self.targets.get_scope_host = MagicMock()
-        self.targets.get_scope_host.return_value = 'HostScope'
-        tgt = Target(category=1)
-        self.targets.db.find_targets.return_value = [tgt]
-        self.targets.db.categories = [Category(id=1, name='Host')]
-        out = self.targets.get_scope(slug='1392g78yr', add_to_db=True)
-        self.targets.db.find_targets.assert_called_with(slug='1392g78yr')
-        self.targets.get_scope_host.assert_called_with(tgt, add_to_db=True)
+        self.targets.get_scope_host.assert_called_with(tgt)
         self.assertEquals(out, 'HostScope')
 
     def test_get_scope_for_web(self):
@@ -503,19 +491,7 @@ class TargetsTestCase(unittest.TestCase):
         self.targets.db.categories = [Category(id=2, name='Web Application')]
         out = self.targets.get_scope(slug='1392g78yr')
         self.targets.db.find_targets.assert_called_with(slug='1392g78yr')
-        self.targets.get_scope_web.assert_called_with(tgt, add_to_db=False)
-        self.assertEquals(out, 'WebScope')
-
-    def test_get_scope_for_web_add_to_db(self):
-        """Should get the scope for a Host when given Web information"""
-        self.targets.get_scope_web = MagicMock()
-        self.targets.get_scope_web.return_value = 'WebScope'
-        tgt = Target(category=2)
-        self.targets.db.find_targets.return_value = [tgt]
-        self.targets.db.categories = [Category(id=2, name='Web Application')]
-        out = self.targets.get_scope(slug='1392g78yr', add_to_db=True)
-        self.targets.db.find_targets.assert_called_with(slug='1392g78yr')
-        self.targets.get_scope_web.assert_called_with(tgt, add_to_db=True)
+        self.targets.get_scope_web.assert_called_with(tgt)
         self.assertEquals(out, 'WebScope')
 
     def test_get_scope_host(self):
@@ -536,29 +512,6 @@ class TargetsTestCase(unittest.TestCase):
         out = self.targets.get_scope_host(codename='SASSYSQUIRREL')
         self.assertEqual(ips, out)
         self.targets.db.find_targets.assert_called_with(codename='SASSYSQUIRREL')
-
-    def test_get_scope_host_add_to_db(self):
-        """Should get the scope for a Host"""
-        ips = {'1.1.1.1/32', '2.2.2.2/32'}
-        self.targets.get_assets = MagicMock()
-        self.targets.get_assets.return_value = [
-            {
-                'active': True,
-                'location': '1.1.1.1/32'
-            },
-            {
-                'active': True,
-                'location': '2.2.2.2/32'
-            }
-        ]
-        self.targets.build_scope_host_db = MagicMock()
-        self.targets.build_scope_host_db.return_value = 'host_db_return_value'
-        self.targets.db.find_targets.return_value = [Target(slug='213h89h3', codename='SASSYSQUIRREL')]
-        out = self.targets.get_scope_host(codename='SASSYSQUIRREL', add_to_db=True)
-        self.assertEqual(ips, out)
-        self.targets.db.find_targets.assert_called_with(codename='SASSYSQUIRREL')
-        self.targets.build_scope_host_db.assert_called_with('213h89h3', ips)
-        self.targets.db.add_ips.assert_called_with('host_db_return_value')
 
     def test_get_scope_host_current(self):
         """Should get the scope for the currenly connected Host if not specified"""
@@ -637,36 +590,6 @@ class TargetsTestCase(unittest.TestCase):
         self.targets.build_scope_web_burp.assert_called_with(scope)
         self.targets.db.find_targets.assert_called_with(codename='SASSYSQUIRREL')
         self.targets.get_assets.assert_called_with(target=tgt, active='true', asset_type='webapp')
-
-    def test_get_scope_web_add_to_db(self):
-        """Should get the scope for a Web Application and add it to the database"""
-        self.targets.build_scope_web_burp = MagicMock()
-        self.targets.build_scope_web_db = MagicMock()
-        self.targets.get_assets = MagicMock()
-        scope = [{
-            'listing': 'uewqhuiewq',
-            'location': 'https://good.things.com',
-            'rule': '*.good.things.com/*',
-            'status': 'in'
-        }]
-        self.targets.get_assets = MagicMock()
-        self.targets.get_assets.return_value = [
-            {
-                'active': True,
-                'listings': [{'listingUid': 'uewqhuiewq', 'scope': 'in'}],
-                'location': 'https://good.things.com (https://good.things.com)',
-                'scopeRules': [
-                    {'rule': '*.good.things.com/*'}
-                ]
-            }
-        ]
-        tgt = Target(slug='213h89h3', organization='93g8eh8', codename='SASSYSQUIRREL')
-        self.targets.db.find_targets.return_value = [tgt]
-        out = self.targets.get_scope_web(codename='SASSYSQUIRREL', add_to_db=True)
-        self.assertEqual(scope, out)
-        self.targets.build_scope_web_burp.assert_called_with(scope)
-        self.targets.db.find_targets.assert_called_with(codename='SASSYSQUIRREL')
-        self.targets.db.add_urls.assert_called_with(self.targets.build_scope_web_db.return_value)
 
     def test_get_scope_web_current(self):
         """Should get the scope for the currently connected Web Application if not specified"""
