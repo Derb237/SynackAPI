@@ -9,6 +9,7 @@ import sqlalchemy as sa
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
+from pprint import pprint
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from synack.db.models import Target
@@ -61,17 +62,21 @@ class Db(Plugin):
             session = self.Session()
             close = True
 
-        to_insert = [
-            {'ip': result['ip'], 'target': result['target']}
-            for result in results
-            if result.get('ip') and result.get('target')
-        ]
+        ips_data = list()
 
-        stmt = sqlite_insert(IP).values(to_insert)
-        stmt = stmt.on_conflict_do_nothing(
-            index_elements=['ip', 'target'],
-        )
-        session.execute(stmt)
+        for result in results:
+            if result.get('ip') and result.get('target'):
+                ips_data.append({
+                    'ip': result['ip'],
+                    'target': result['target']
+                })
+
+        if ips_data:
+            stmt = sqlite_insert(IP).values(ips_data)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=['ip', 'target'],
+            )
+            session.execute(stmt)
 
         if close:
             session.commit()
@@ -84,17 +89,19 @@ class Db(Plugin):
             session = self.Session()
             close = True
 
-        to_insert = list()
+        organizations_data = list()
+
         for target in targets:
             slug = target.get('organization_id', target.get('organization', {}).get('slug'))
             if slug:
-                to_insert.append({'slug': slug})
+                organizations_data.append({'slug': slug})
 
-        stmt = sqlite_insert(Organization).values(to_insert)
-        stmt = stmt.on_conflict_do_nothing(
-            index_elements=['slug'],
-        )
-        session.execute(stmt)
+        if organizations_data:
+            stmt = sqlite_insert(Organization).values(organizations_data)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=['slug'],
+            )
+            session.execute(stmt)
 
         if close:
             session.commit()
@@ -122,17 +129,18 @@ class Db(Plugin):
                         'updated': port.get('updated')
                     })
 
-        stmt = sqlite_insert(Port).values(ports_data)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=['port', 'protocol', 'ip', 'source'],
-            set_={
-                'service': stmt.excluded.service,
-                'open': stmt.excluded.open,
-                'updated': stmt.excluded.updated
-            }
-        )
+        if ports_data:
+            stmt = sqlite_insert(Port).values(ports_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['port', 'protocol', 'ip', 'source'],
+                set_={
+                    'service': stmt.excluded.service,
+                    'open': stmt.excluded.open,
+                    'updated': stmt.excluded.updated
+                }
+            )
+            session.execute(stmt)
 
-        session.execute(stmt)
         session.commit()
         session.close()
 
@@ -140,7 +148,7 @@ class Db(Plugin):
         session = self.Session()
 
         self.add_organizations(targets, session)
-        db_orgs = session.query(Organization.slug).all()
+        db_orgs = [org[0] for org in session.query(Organization.slug).all()]
 
         targets_data = list()
 
@@ -148,7 +156,7 @@ class Db(Plugin):
             org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
             if org_slug in db_orgs:
                 target_data = {
-                    'slug': target.get('slug', target.get('id')),
+                    'slug': target.get('id', target.get('slug')),
                     'category': target['category']['id'],
                     'organization': org_slug,
                     'date_updated': target.get('dateUpdated'),
@@ -160,21 +168,22 @@ class Db(Plugin):
                 target_data.update(kwargs)
                 targets_data.append(target_data)
 
-        stmt = sqlite_insert(Target).values(targets_data)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=['slug'],
-            set_={
-                'category': stmt.excluded.category,
-                'organization': stmt.excluded.organization,
-                'date_updated': stmt.excluded.date_updated,
-                'is_active': stmt.excluded.is_active,
-                'is_new': stmt.excluded.is_new,
-                'is_registered': stmt.excluded.is_registered,
-                'last_submitted': stmt.excluded.last_submitted,
-            }
-        )
+        if targets_data:
+            stmt = sqlite_insert(Target).values(targets_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['slug'],
+                set_={
+                    'category': stmt.excluded.category,
+                    'organization': stmt.excluded.organization,
+                    'date_updated': stmt.excluded.date_updated,
+                    'is_active': stmt.excluded.is_active,
+                    'is_new': stmt.excluded.is_new,
+                    'is_registered': stmt.excluded.is_registered,
+                    'last_submitted': stmt.excluded.last_submitted,
+                }
+            )
+            session.execute(stmt)
 
-        session.execute(stmt)
         session.commit()
         session.close()
 
@@ -195,15 +204,16 @@ class Db(Plugin):
                         'screenshot_url': url.get('screenshot_url')
                     })
 
-        stmt = sqlite_insert(Url).values(urls_data)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=['ip', 'url'],
-            set_={
-                'screenshot_url': stmt.excluded.screenshot_url
-            }
-        )
+        if urls_data:
+            stmt = sqlite_insert(Url).values(urls_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['ip', 'url'],
+                set_={
+                    'screenshot_url': stmt.excluded.screenshot_url
+                }
+            )
+            session.execute(stmt)
 
-        session.execute(stmt)
         session.commit()
         session.close()
 
