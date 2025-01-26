@@ -50,10 +50,12 @@ class Scratchspace(Plugin):
                             downloads.append(dest_file)
         return downloads
 
-    def set_file(self, content, filename=None, target=None, codename=None):
+    def set_file(self, content, filename, target=None, codename=None):
         if target or codename:
             if type(content) in [list, set]:
                 content = '\n'.join(content)
+            elif type(content) in [dict]:
+                content = json.dumps(content)
             dest_file = self.build_filepath(filename, target=target, codename=codename)
             with open(dest_file, 'w') as fp:
                 fp.write(content)

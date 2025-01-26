@@ -6,7 +6,6 @@ Create Date: 2025-01-26 05:19:35.150476
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -24,4 +23,3 @@ def upgrade():
 def downgrade():
     with op.batch_alter_table('ips') as batch_op:
         batch_op.drop_constraint('uq_ip', type_='unique')
-

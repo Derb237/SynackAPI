@@ -86,12 +86,12 @@ class Db(Plugin):
 
         to_insert = list()
         for target in targets:
-            slug = target.get('organization_id', target.get('organization'. {}).get('slug'))
+            slug = target.get('organization_id', target.get('organization', {}).get('slug'))
             if slug:
-                to_insert.append({'slug': slug}}
+                to_insert.append({'slug': slug})
 
         stmt = sqlite_insert(Organization).values(to_insert)
-        stmt = smty.on_conflict_do_nothing(
+        stmt = stmt.on_conflict_do_nothing(
             index_elements=['slug'],
         )
         session.execute(stmt)
@@ -136,7 +136,7 @@ class Db(Plugin):
         session.commit()
         session.close()
 
-    def add_targets(self, targets):
+    def add_targets(self, targets, **kwargs):
         session = self.Session()
 
         self.add_organizations(targets, session)
@@ -147,7 +147,7 @@ class Db(Plugin):
         for target in targets:
             org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
             if org_slug in db_orgs:
-                targets_data.append({
+                target_data = {
                     'slug': target.get('slug', target.get('id')),
                     'category': target['category']['id'],
                     'organization': org_slug,
@@ -156,7 +156,9 @@ class Db(Plugin):
                     'is_new': target.get('isNew'),
                     'is_registered': target.get('isRegistered'),
                     'last_submitted': target.get('lastSubmitted')
-                })
+                }
+                target_data.update(kwargs)
+                targets_data.append(target_data)
 
         stmt = sqlite_insert(Target).values(targets_data)
         stmt = stmt.on_conflict_do_update(
@@ -189,7 +191,7 @@ class Db(Plugin):
             if ip_id:
                 for url in result.get('urls', []):
                     urls_data.append({
-                        'url': url.get('url')
+                        'url': url.get('url'),
                         'screenshot_url': url.get('screenshot_url')
                     })
 

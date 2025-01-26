@@ -60,7 +60,8 @@ class DbTestCase(unittest.TestCase):
         self.db.Session.return_value.commit.assert_called_with()
         self.db.Session.return_value.close.assert_called_with()
 
-    def test_add_ips_existing_ips(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_ips_existing_ips(self, mock_insert):
         """Should not add IPs if already in db"""
         self.db.Session = MagicMock()
         results = [
@@ -82,19 +83,23 @@ class DbTestCase(unittest.TestCase):
                 ]
             }
         ]
-        query = self.db.Session.return_value.query
-        with patch.object(sqlalchemy, 'and_') as mock_and:
-            mock_and.return_value = 'sqlalchemy.and_'
-            self.db.add_ips(results)
+        to_insert = [
+            {'ip': '1.1.1.1', 'target': '7gh33tjf72'}
+        ]
+        self.db.add_ips(results)
+        mock_insert.assert_called_with(synack.db.models.IP)
+        mock_insert.return_value.values.assert_called_with(to_insert)
+        stmt = mock_insert.return_value.values.return_value
+        stmt.on_conflict_do_nothing.assert_called_with(
+            index_elements=['slug'],
+        )
 
-            mock_and.assert_called()
-            query.asset_called_with(synack.db.models.IP)
-            query.return_value.filter.assert_called_with('sqlalchemy.and_')
-            query.return_value.filter.return_value.first.assert_called_with()
-            self.db.Session.return_value.commit.assert_called_with()
-            self.db.Session.return_value.close.assert_called_with()
+        self.db.Session.return_value.execute.assert_called_with(stmt)
+        self.db.Session.return_value.commit.assert_called_with()
+        self.db.Session.return_value.close.assert_called_with()
 
-    def test_add_ips_new_ips(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_ips_new_ips(self, mock_insert):
         """Should app IPs if new"""
         self.db.Session = MagicMock()
         results = [
@@ -167,7 +172,8 @@ class DbTestCase(unittest.TestCase):
         mock.query.return_value.filter_by.return_value.first.assert_called_with()
         mock.add.assert_called()
 
-    def test_add_ports_new(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_ports_new(self, mock_insert):
         """Should add port if new"""
         self.db.Session = MagicMock()
         self.db.add_ips = MagicMock()
@@ -202,7 +208,8 @@ class DbTestCase(unittest.TestCase):
             self.db.Session.return_value.commit.assert_called_with()
             self.db.Session.return_value.close.assert_called_with()
 
-    def test_add_ports_update(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_ports_update(self, mock_insert):
         """Should update ports if existing"""
         self.db.Session = MagicMock()
         self.db.add_ips = MagicMock()
@@ -278,7 +285,8 @@ class DbTestCase(unittest.TestCase):
         self.db.Session.return_value.commit.assert_called_with()
         self.db.Session.return_value.close.assert_called_with()
 
-    def test_add_urls_new(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_urls_new(self, mock_insert):
         """Should add url if new"""
         self.db.Session = MagicMock()
         self.db.add_ips = MagicMock()
@@ -309,7 +317,8 @@ class DbTestCase(unittest.TestCase):
             self.db.Session.return_value.commit.assert_called_with()
             self.db.Session.return_value.close.assert_called_with()
 
-    def test_add_urls_no_ip(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_urls_no_ip(self, mock_insert):
         """Should be fine if IP isn't included"""
         self.db.Session = MagicMock()
         self.db.add_ips = MagicMock()
@@ -339,7 +348,8 @@ class DbTestCase(unittest.TestCase):
             self.db.Session.return_value.close.assert_called_with()
             self.db.add_ips.assert_called_with(results)
 
-    def test_add_url_update(self):
+    @patch('sqlalchemy.dialects.sqlite.insert')
+    def test_add_url_update(self, mock_insert):
         """Should update urls if existing"""
         self.db.Session = MagicMock()
         self.db.add_ips = MagicMock()

@@ -96,11 +96,8 @@ Additionally, some properties can be overridden by the State, which allows you t
 >> ...                 "port": "443",
 >> ...                 "protocol": "tcp",
 >> ...                 "service": "Super Apache NGINX Deluxe",
->> ...                 "screenshot_url": "http://127.0.0.1/h3298h23.png",
->> ...                 "url": "http://bubba.net",
 >> ...                 "open": True,
 >> ...                 "updated": 1654969137
->> ...
 >> ...             },
 >> ...             {
 >> ...                 "port": "53",

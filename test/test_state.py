@@ -141,7 +141,7 @@ class StateTestCase(unittest.TestCase):
         self.assertEqual('12345', self.state._user_id)
 
     def test_use_scratchspace(self):
-        self.assertEqual(None, self.state.use_scratchspace)
+        self.assertEqual(self.state._db.use_scratchspace, self.state.use_scratchspace)
         self.assertEqual(None, self.state._use_scratchspace)
         self.state.use_scratchspace = True
         self.assertEqual(True, self.state.use_scratchspace)

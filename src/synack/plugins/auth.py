@@ -85,6 +85,8 @@ class Auth(Plugin):
         res = self._api.request('POST', 'logout')
         if res.status_code == 200:
             self._db.api_token = ''
+            return True
+        return False
 
     def set_login_script(self):
         script = "let forceLogin = () => {" +\
