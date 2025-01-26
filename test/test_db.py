@@ -21,6 +21,7 @@ import synack  # noqa: E402
 class DbTestCase(unittest.TestCase):
     def setUp(self):
         self.state = synack._state.State()
+        self.state._db = MagicMock()
         self.db = synack.plugins.Db(self.state)
 
     def test_add_categories(self):
@@ -28,12 +29,7 @@ class DbTestCase(unittest.TestCase):
         cats = [{
             "category_id": 10,
             "category_name": "Some Cool Cat",
-            "practical_assessment": {
-                "passed": True
-            },
-            "written_assessment": {
-                "passed": True
-            }
+            "passed": True
         }]
         query = self.db.Session.return_value.query
 
@@ -48,14 +44,9 @@ class DbTestCase(unittest.TestCase):
     def test_add_categories_empty_db(self):
         self.db.Session = MagicMock()
         cats = [{
-            "category_id": 10,
-            "category_name": "Some Cool Cat",
-            "practical_assessment": {
-                "passed": True
-            },
-            "written_assessment": {
-                "passed": True
-            }
+            'category_id': 10,
+            'category_name': 'Some Cool Cat',
+            'passed': True
         }]
         query = self.db.Session.return_value.query
         query.return_value.filter_by.return_value.first.return_value = None
@@ -383,12 +374,12 @@ class DbTestCase(unittest.TestCase):
         self.db.get_config = MagicMock()
         self.db.set_config = MagicMock()
 
-        self.db.get_config.return_value = "123"
+        self.db.get_config.return_value = '123'
+        self.assertEqual('123', self.db.api_token)
+        self.db.get_config.assert_called_with('api_token')
 
-        self.db.api_token = "123"
-        self.db.set_config.assert_called_with("api_token", "123")
-        self.assertEqual("123", self.db.api_token)
-        self.db.get_config.assert_called_with("api_token")
+        self.db.api_token = '456'
+        self.db.set_config.assert_called_with('api_token', '456')
 
     def test_categories(self):
         """Should pull the categories from the database"""
@@ -413,18 +404,7 @@ class DbTestCase(unittest.TestCase):
         self.db.get_config.assert_called_with("debug")
 
         self.db.debug = True
-        self.assertEqual(True, self.db.debug)
-        self.assertEqual(True, self.db.state.debug)
-
-    def test_debug_state(self):
-        """Should pull debug from the State"""
-        self.db.get_config = MagicMock()
-        self.db.set_config = MagicMock()
-        self.db.get_config.return_value = False
-
-        self.db.state.debug = True
-        self.assertEqual(True, self.db.debug)
-        self.assertEqual(True, self.db.state.debug)
+        self.db.set_config.assert_called_with('debug', True)
 
     def test_email(self):
         """Should pull email from the database"""
@@ -444,17 +424,8 @@ class DbTestCase(unittest.TestCase):
             mock_input.return_value = '1@2.com'
             self.assertEqual('1@2.com', self.db.email)
             mock_input.assert_called_with('Synack Email: ')
-        self.assertEqual('1@2.com', self.db.state.email)
         self.db.get_config.assert_called_with("email")
         self.db.set_config.assert_called_with("email", "1@2.com")
-
-    def test_email_state(self):
-        """Should pull email from the state"""
-        self.db.get_config = MagicMock()
-        self.db.state.email = "1@2.com"
-
-        self.assertEqual("1@2.com", self.db.email)
-        self.assertEqual("1@2.com", self.db.state.email)
 
     def test_find_ips(self):
         """Should return a list of IPs"""
@@ -692,7 +663,6 @@ class DbTestCase(unittest.TestCase):
         self.db.get_config.return_value = "ABCDEFGH"
 
         self.assertEqual("ABCDEFGH", self.db.otp_secret)
-        self.assertEqual("ABCDEFGH", self.db.state.otp_secret)
 
     def test_otp_secret_prompt(self):
         """Should ask the user for otp_secret if none"""
@@ -704,17 +674,8 @@ class DbTestCase(unittest.TestCase):
             mock_input.return_value = 'ABCDEFGH'
             self.assertEqual('ABCDEFGH', self.db.otp_secret)
             mock_input.assert_called_with('Synack OTP Secret: ')
-        self.assertEqual('ABCDEFGH', self.db.state.otp_secret)
         self.db.get_config.assert_called_with("otp_secret")
         self.db.set_config.assert_called_with("otp_secret", "ABCDEFGH")
-
-    def test_otp_secret_state(self):
-        """Should pull otp_secret from the state"""
-        self.db.get_config = MagicMock()
-        self.db.state.otp_secret = "ABCDEFGH"
-
-        self.assertEqual("ABCDEFGH", self.db.otp_secret)
-        self.assertEqual("ABCDEFGH", self.db.state.otp_secret)
 
     def test_password(self):
         """Should pull password from the database"""
@@ -734,17 +695,8 @@ class DbTestCase(unittest.TestCase):
             mock_input.return_value = 'password1234'
             self.assertEqual('password1234', self.db.password)
             mock_input.assert_called_with('Synack Password: ')
-        self.assertEqual('password1234', self.db.state.password)
         self.db.get_config.assert_called_with("password")
         self.db.set_config.assert_called_with("password", "password1234")
-
-    def test_password_state(self):
-        """Should pull password from the state"""
-        self.db.get_config = MagicMock()
-        self.db.state.password = "password1234"
-
-        self.assertEqual("password1234", self.db.password)
-        self.assertEqual("password1234", self.db.state.password)
 
     def test_ports(self):
         """Should get all ports from the database"""
@@ -777,19 +729,6 @@ class DbTestCase(unittest.TestCase):
         self.assertEqual(ret, self.db.proxies)
         self.db.get_config.has_calls(calls)
 
-    def test_proxies_state(self):
-        """Should pull proxies from the State over the database"""
-        self.db.get_config = MagicMock()
-        self.db.state.http_proxy = 'http://1.2.3.4:8080'
-        self.db.state.https_proxy = 'https://4.3.2.1:8080'
-
-        self.assertEqual(self.db.proxies, {
-            'http': 'http://1.2.3.4:8080',
-            'https': 'https://4.3.2.1:8080'
-        })
-
-        self.db.get_config.assert_not_called()
-
     def test_remove_targets(self):
         self.db.Session = MagicMock()
         self.db.remove_targets()
@@ -820,18 +759,9 @@ class DbTestCase(unittest.TestCase):
         self.db.scratchspace_dir
 
         self.assertEqual(pathlib.Path('/tmp'), self.db.scratchspace_dir)
-        self.assertEqual(pathlib.Path('/tmp'), self.db.state.scratchspace_dir)
         self.db.get_config.assert_called_with('scratchspace_dir')
         self.db.scratchspace_dir = '/tmp'
         self.db.set_config.assert_called_with('scratchspace_dir', '/tmp')
-
-    def test_scratchspace_dir_state(self):
-        """Should provide state scratchspace_dir over database"""
-        self.db.get_config = MagicMock()
-        self.db.state.scratchspace_dir = pathlib.Path('/tmp')
-
-        self.assertEqual(pathlib.Path('/tmp'), self.db.scratchspace_dir)
-        self.db.get_config.assert_not_called()
 
     def test_set_config(self):
         self.db.Session = MagicMock()
@@ -992,18 +922,9 @@ class DbTestCase(unittest.TestCase):
         self.db.template_dir
 
         self.assertEqual(pathlib.Path('/tmp'), self.db.template_dir)
-        self.assertEqual(pathlib.Path('/tmp'), self.db.state.template_dir)
         self.db.get_config.assert_called_with('template_dir')
         self.db.template_dir = '/tmp'
         self.db.set_config.assert_called_with('template_dir', '/tmp')
-
-    def test_template_dir_state(self):
-        """Should provide state template_dir over database"""
-        self.db.get_config = MagicMock()
-        self.db.state.template_dir = pathlib.Path('/tmp')
-
-        self.assertEqual(pathlib.Path('/tmp'), self.db.template_dir)
-        self.db.get_config.assert_not_called()
 
     def test_urls(self):
         """Should get all urls from the database"""
@@ -1027,19 +948,6 @@ class DbTestCase(unittest.TestCase):
         self.db.set_config.assert_called_with("use_proxies", True)
         self.assertEqual(True, self.db.use_proxies)
 
-    def test_use_proxies_state(self):
-        """State use_proxies should override database"""
-        self.db.get_config = MagicMock()
-
-        self.db.get_config.return_value = True
-
-        self.assertEqual(True, self.db.use_proxies)
-
-        self.db.state.use_proxies = False
-        self.assertEqual(False, self.db.use_proxies)
-        self.db.state.use_proxies = True
-        self.assertEqual(True, self.db.use_proxies)
-
     def test_user_id(self):
         """Should set and get the user_id from the database"""
         self.db.get_config = MagicMock()
@@ -1061,17 +969,4 @@ class DbTestCase(unittest.TestCase):
 
         self.db.use_scratchspace = True
         self.db.set_config.assert_called_with("use_scratchspace", True)
-        self.assertEqual(True, self.db.use_scratchspace)
-
-    def test_use_scratchspace_state(self):
-        """State use_scratchspace should override database"""
-        self.db.get_config = MagicMock()
-
-        self.db.get_config.return_value = True
-
-        self.assertEqual(True, self.db.use_scratchspace)
-
-        self.db.state.use_scratchspace = False
-        self.assertEqual(False, self.db.use_scratchspace)
-        self.db.state.use_scratchspace = True
         self.assertEqual(True, self.db.use_scratchspace)

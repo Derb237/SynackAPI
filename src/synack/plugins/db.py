@@ -414,19 +414,9 @@ class Db(Plugin):
 
     @property
     def proxies(self):
-        if self._state.http_proxy is None:
-            http_proxy = self.get_config('http_proxy')
-        else:
-            http_proxy = self._state.http_proxy
-
-        if self._state.https_proxy is None:
-            https_proxy = self.get_config('https_proxy')
-        else:
-            https_proxy = self._state.https_proxy
-
         return {
-            'http': http_proxy,
-            'https': https_proxy
+            'http': self.get_config('http_proxy'),
+            'https': self.get_config('https_proxy')
         }
 
     def remove_targets(self, **kwargs):
@@ -441,7 +431,7 @@ class Db(Plugin):
 
     @scratchspace_dir.setter
     def scratchspace_dir(self, value):
-        self.set_config('scratchspace_dir', value)
+        self.set_config('scratchspace_dir', str(value))
 
     def set_config(self, name, value):
         session = self.Session()

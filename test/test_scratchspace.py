@@ -1,6 +1,6 @@
 """test_scratchspace.py
 
-Tests for the plugins/scratchspace.py Db class
+Tests for the plugins/scratchspace.py Scratchspace class
 """
 
 import os
@@ -18,17 +18,18 @@ import synack  # noqa: E402
 class ScratchspaceTestCase(unittest.TestCase):
     def setUp(self):
         self.state = synack._state.State()
+        self.state._db = MagicMock()
         self.scratchspace = synack.plugins.Scratchspace(self.state)
 
     def test_build_filepath_codename(self):
         """Should build the appropriate scratchspace filepath given a codename"""
-        self.scratchspace.db.scratchspace_dir = pathlib.Path('/tmp')
+        self.scratchspace._state.scratchspace_dir = pathlib.Path('/tmp')
         ret = self.scratchspace.build_filepath('test.txt', codename='TIREDTURKEY')
         self.assertEqual(pathlib.Path('/tmp/TIREDTURKEY/test.txt'), ret)
 
     def test_build_filepath_target(self):
         """Should build the appropriate scratchspace filepath given a filepath"""
-        self.scratchspace.db.scratchspace_dir = pathlib.Path('/tmp')
+        self.scratchspace._state.scratchspace_dir = pathlib.Path('/tmp')
         target = synack.db.models.Target(codename='TIREDTURKEY')
         ret = self.scratchspace.build_filepath('test.txt', target=target)
         self.assertEqual(pathlib.Path('/tmp/TIREDTURKEY/test.txt'), ret)
@@ -82,9 +83,9 @@ class ScratchspaceTestCase(unittest.TestCase):
         dest_path = pathlib.Path('/tmp/TIREDTURKEY/burp.txt')
         self.scratchspace.build_filepath = MagicMock()
         self.scratchspace.build_filepath.return_value = dest_path
-        self.scratchspace.api.request = MagicMock()
-        self.scratchspace.api.request.return_value.status_code = 200
-        self.scratchspace.api.request.return_value.content = b'file_content'
+        self.scratchspace._api.request = MagicMock()
+        self.scratchspace._api.request.return_value.status_code = 200
+        self.scratchspace._api.request.return_value.content = b'file_content'
         m = mock_open()
         attachments = [
             {'slug': '43i7h', 'filename': 'file1.txt', 'url': 'https://downloads.com/xyzf'}
@@ -101,9 +102,9 @@ class ScratchspaceTestCase(unittest.TestCase):
         dest_path = pathlib.Path('/tmp/TIREDTURKEY/burp.txt')
         self.scratchspace.build_filepath = MagicMock()
         self.scratchspace.build_filepath.return_value = dest_path
-        self.scratchspace.api.request = MagicMock()
-        self.scratchspace.api.request.return_value.status_code = 200
-        self.scratchspace.api.request.return_value.content = b'file_content'
+        self.scratchspace._api.request = MagicMock()
+        self.scratchspace._api.request.return_value.status_code = 200
+        self.scratchspace._api.request.return_value.content = b'file_content'
         attachments = [
             {'slug': '43i7h', 'filename': 'file1.txt', 'url': 'https://downloads.com/xyzf'}
         ]

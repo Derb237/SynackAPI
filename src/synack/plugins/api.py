@@ -4,7 +4,7 @@ Functions to handle interacting with the Synack APIs
 """
 
 import time
-import warnings
+import urllib3
 
 from .base import Plugin
 
@@ -82,9 +82,12 @@ class Api(Plugin):
             base = 'https://platform.synack.com/api/'
         url = f'{base}{path}'
 
-        warnings.filterwarnings("ignore")
-        verify = False
+        verify = True
         proxies = self._state.proxies if self._state.use_proxies else None
+
+        if proxies:
+            verify = False
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         if 'synack.com/api/' in url:
             headers = {
