@@ -222,7 +222,7 @@ class State(object):
     def use_scratchspace(self) -> bool:
         ret = self._use_scratchspace
         if ret is None:
-            self._db.use_scratchspace
+            ret = self._db.use_scratchspace
         return ret
 
     @use_scratchspace.setter

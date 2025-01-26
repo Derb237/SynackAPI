@@ -31,3 +31,14 @@ class Notifications(Plugin):
                                       query=query)
         if res.status_code == 200:
             return res.json()
+
+    def set_read(self):
+        """Set all notifications to read"""
+        query = {
+            "authorization_token": self._state.notifications_token
+        }
+        res = self._api.notifications('GET',
+                                      'read_all',
+                                      query=query)
+        if res.status_code == 200:
+            return res.json()

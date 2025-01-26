@@ -115,6 +115,11 @@ class Targets(Plugin):
         if type(scope) == str:
             scope = [scope]
 
+        if type(host_type) == str:
+            host_type = [host_type]
+        elif host_type is None:
+            host_type = list()
+
         if target:
             if type(target) is list and len(target) > 0:
                 target = target[0]
@@ -125,8 +130,8 @@ class Targets(Plugin):
                 queries.append(f'organizationUid%5B%5D={organization_uid}')
             if asset_type is not None:
                 queries.append(f'assetType%5B%5D={asset_type}')
-            if host_type is not None:
-                queries.append(f'hostType%5B%5D={host_type}')
+            for item in host_type:
+                queries.append(f'hostType%5B%5D={item}')
             for item in scope:
                 queries.append(f'scope%5B%5D={item}')
             if sort is not None:
@@ -252,6 +257,7 @@ class Targets(Plugin):
 
     def get_scope_host(self, target=None, **kwargs):
         """Get the scope of a Host target"""
+
         if target is None:
             if len(kwargs) > 0:
                 targets = self._db.find_targets(**kwargs)
@@ -264,7 +270,7 @@ class Targets(Plugin):
         scope = set()
 
         if target:
-            assets = self.get_assets(target=target, active='true', asset_type='host', host_type='cidr')
+            assets = self.get_assets(target=target, active='true', asset_type='host', host_type=['cidr', 'ip'])
             for asset in assets:
                 if asset.get('active'):
                     try:

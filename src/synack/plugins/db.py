@@ -7,6 +7,8 @@ import alembic.config
 import alembic.command
 import sqlalchemy as sa
 
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from synack.db.models import Target
@@ -28,6 +30,9 @@ class Db(Plugin):
         self.set_migration()
 
         engine = sa.create_engine(f'sqlite:///{str(self.sqlite_db)}')
+        metadata = sa.MetaData()
+        metadata.reflect(bind=engine)
+        metadata.clear()
         sa.event.listen(engine, 'connect', self._fk_pragma_on_connect)
         self.Session = sessionmaker(bind=engine)
 
@@ -51,132 +56,152 @@ class Db(Plugin):
 
     def add_ips(self, results, session=None):
         close = False
+
         if session is None:
             session = self.Session()
             close = True
-        q = session.query(IP)
-        for result in results:
-            if result.get('ip'):
-                filt = sa.and_(
-                    IP.ip.like(result.get('ip')),
-                    IP.target.like(result.get('target'))
-                )
-                db_ip = q.filter(filt).first()
-                if not db_ip:
-                    db_ip = IP(
-                        ip=result.get('ip'),
-                        target=result.get('target'))
-                    session.add(db_ip)
+
+        to_insert = [
+            {'ip': result['ip'], 'target': result['target']}
+            for result in results
+            if result.get('ip') and result.get('target')
+        ]
+
+        stmt = sqlite_insert(IP).values(to_insert)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=['ip', 'target'],
+        )
+        session.execute(stmt)
+
         if close:
             session.commit()
             session.close()
 
     def add_organizations(self, targets, session=None):
         close = False
+
         if session is None:
             session = self.Session()
             close = True
-        q = session.query(Organization)
-        for t in targets:
-            if t.get('organization'):
-                slug = t['organization']['slug']
-            else:
-                slug = t.get('organization_id')
-            db_o = q.filter_by(slug=slug).first()
-            if not db_o:
-                db_o = Organization(slug=slug)
-                session.add(db_o)
+
+        to_insert = list()
+        for target in targets:
+            slug = target.get('organization_id', target.get('organization'. {}).get('slug'))
+            if slug:
+                to_insert.append({'slug': slug}}
+
+        stmt = sqlite_insert(Organization).values(to_insert)
+        stmt = smty.on_conflict_do_nothing(
+            index_elements=['slug'],
+        )
+        session.execute(stmt)
+
         if close:
             session.commit()
             session.close()
 
     def add_ports(self, results):
-        self.add_ips(results)
         session = self.Session()
-        q = session.query(Port)
-        ips = session.query(IP)
+
+        self.add_ips(results, session)
+        ip_map = {ip.ip: ip.id for ip in session.query(IP.ip, IP.id).all()}
+
+        ports_data = list()
+
         for result in results:
-            ip = ips.filter_by(ip=result.get('ip'))
-            if ip:
-                ip = ip.first()
+            ip_id = ip_map.get(result.get('ip'))
+            if ip_id:
                 for port in result.get('ports', []):
-                    filt = sa.and_(
-                        Port.port.like(port.get('port')),
-                        Port.protocol.like(port.get('protocol')),
-                        Port.ip.like(ip.id),
-                        Port.source.like(result.get('source')))
-                    db_port = q.filter(filt)
-                    if not db_port:
-                        db_port = Port(
-                            port=port.get('port'),
-                            protocol=port.get('protocol'),
-                            service=port.get('service'),
-                            ip=ip.id,
-                            source=result.get('source'),
-                            open=port.get('open'),
-                            updated=port.get('updated')
-                        )
-                    else:
-                        db_port = db_port.first()
-                        db_port.service = port.get('service', db_port.service)
-                        db_port.open = port.get('open', db_port.open)
-                        db_port.updated = port.get('updated', db_port.updated)
-                    session.add(db_port)
+                    ports_data.append({
+                        'port': port.get('port'),
+                        'protocol': port.get('protocol'),
+                        'service': port.get('service'),
+                        'ip': ip_id,
+                        'source': result.get('source'),
+                        'open': port.get('open'),
+                        'updated': port.get('updated')
+                    })
+
+        stmt = sqlite_insert(Port).values(ports_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['port', 'protocol', 'ip', 'source'],
+            set_={
+                'service': stmt.excluded.service,
+                'open': stmt.excluded.open,
+                'updated': stmt.excluded.updated
+            }
+        )
+
+        session.execute(stmt)
         session.commit()
         session.close()
 
-    def add_targets(self, targets, **kwargs):
+    def add_targets(self, targets):
         session = self.Session()
+
         self.add_organizations(targets, session)
-        q = session.query(Target)
-        for t in targets:
-            if t.get('organization'):
-                org_slug = t['organization']['slug']
-            else:
-                org_slug = t.get('organization_id')
-            slug = t.get('slug', t.get('id'))
-            db_t = q.filter_by(slug=slug).first()
-            if not db_t:
-                db_t = Target(slug=slug)
-                session.add(db_t)
-            for k in t.keys():
-                setattr(db_t, k, t[k])
-            db_t.category = t['category']['id']
-            db_t.organization = org_slug
-            db_t.date_updated = t.get('dateUpdated')
-            db_t.is_active = t.get('isActive')
-            db_t.is_new = t.get('isNew')
-            db_t.is_registered = t.get('isRegistered')
-            db_t.is_updated = t.get('isUpdated')
-            db_t.last_submitted = t.get('lastSubmitted')
-            for k in kwargs.keys():
-                setattr(db_t, k, kwargs[k])
+        db_orgs = session.query(Organization.slug).all()
+
+        targets_data = list()
+
+        for target in targets:
+            org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
+            if org_slug in db_orgs:
+                targets_data.append({
+                    'slug': target.get('slug', target.get('id')),
+                    'category': target['category']['id'],
+                    'organization': org_slug,
+                    'date_updated': target.get('dateUpdated'),
+                    'is_active': target.get('isActive'),
+                    'is_new': target.get('isNew'),
+                    'is_registered': target.get('isRegistered'),
+                    'last_submitted': target.get('lastSubmitted')
+                })
+
+        stmt = sqlite_insert(Target).values(targets_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['slug'],
+            set_={
+                'category': stmt.excluded.category,
+                'organization': stmt.excluded.organization,
+                'date_updated': stmt.excluded.date_updated,
+                'is_active': stmt.excluded.is_active,
+                'is_new': stmt.excluded.is_new,
+                'is_registered': stmt.excluded.is_registered,
+                'last_submitted': stmt.excluded.last_submitted,
+            }
+        )
+
+        session.execute(stmt)
         session.commit()
         session.close()
 
-    def add_urls(self, results, **kwargs):
-        self.add_ips(results)
+    def add_urls(self, results):
         session = self.Session()
-        q = session.query(Url)
-        ips = session.query(IP)
+
+        self.add_ips(results, session)
+        ip_map = {ip.ip: ip.id for ip in session.query(IP.ip, IP.id).all()}
+
+        urls_data = list()
+
         for result in results:
-            ip = ips.filter_by(ip=result.get('ip')).first()
-            for url in result.get('urls', []):
-                if ip:
-                    filt = sa.and_(
-                        Url.url.like(url.get('url')),
-                        Url.ip.like(ip.id))
-                else:
-                    filt = sa.and_(
-                        Url.url.like(url.get('url')))
-                db_url = q.filter(filt).first()
-                if not db_url:
-                    db_url = Url()
-                db_url.url = url.get('url')
-                db_url.screenshot_url = url.get('screenshot_url')
-                if ip:
-                    db_url.ip = ip.id
-                session.add(db_url)
+            ip_id = ip_map.get(result.get('ip'))
+            if ip_id:
+                for url in result.get('urls', []):
+                    urls_data.append({
+                        'url': url.get('url')
+                        'screenshot_url': url.get('screenshot_url')
+                    })
+
+        stmt = sqlite_insert(Url).values(urls_data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['ip', 'url'],
+            set_={
+                'screenshot_url': stmt.excluded.screenshot_url
+            }
+        )
+
+        session.execute(stmt)
         session.commit()
         session.close()
 

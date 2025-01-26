@@ -28,22 +28,10 @@ class Scratchspace(Plugin):
             return f
 
     def set_assets_file(self, content, target=None, codename=None):
-        if target or codename:
-            if type(content) in [list, set]:
-                content = '\n'.join(content)
-            dest_file = self.build_filepath('assets.txt', target=target, codename=codename)
-            with open(dest_file, 'w') as fp:
-                fp.write(content)
-                return dest_file
+        return self.set_file(content=content, filename='assets.txt', target=target, codename=codename)
 
     def set_burp_file(self, content, target=None, codename=None):
-        if target or codename:
-            if type(content) == dict:
-                content = json.dumps(content)
-            dest_file = self.build_filepath('burp.txt', target=target, codename=codename)
-            with open(dest_file, 'w') as fp:
-                fp.write(content)
-                return dest_file
+        return self.set_file(content=content, filename='burp.txt', target=target, codename=codename)
 
     def set_download_attachments(self, attachments, target=None, codename=None, prompt_overwrite=True, overwrite=True):
         downloads = list()
@@ -62,11 +50,14 @@ class Scratchspace(Plugin):
                             downloads.append(dest_file)
         return downloads
 
-    def set_hosts_file(self, content, target=None, codename=None):
+    def set_file(self, content, filename=None, target=None, codename=None):
         if target or codename:
             if type(content) in [list, set]:
                 content = '\n'.join(content)
-            dest_file = self.build_filepath('hosts.txt', target=target, codename=codename)
+            dest_file = self.build_filepath(filename, target=target, codename=codename)
             with open(dest_file, 'w') as fp:
                 fp.write(content)
                 return dest_file
+
+    def set_hosts_file(self, content, target=None, codename=None):
+        return self.set_file(content=content, filename='hosts.txt', target=target, codename=codename)
