@@ -157,6 +157,7 @@ class Db(Plugin):
             if org_slug in db_orgs:
                 target_data = {
                     'slug': target.get('id', target.get('slug')),
+                    'codename': target.get('codename'),
                     'category': target['category']['id'],
                     'organization': org_slug,
                     'date_updated': target.get('dateUpdated'),
@@ -174,6 +175,7 @@ class Db(Plugin):
                 index_elements=['slug'],
                 set_={
                     'category': stmt.excluded.category,
+                    'codename': stmt.excluded.codename,
                     'organization': stmt.excluded.organization,
                     'date_updated': stmt.excluded.date_updated,
                     'is_active': stmt.excluded.is_active,

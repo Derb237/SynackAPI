@@ -82,13 +82,10 @@ class Api(Plugin):
             base = 'https://platform.synack.com/api/'
         url = f'{base}{path}'
 
-        verify = True
+        verify = False
         warnings.filterwarnings('ignore')
 
         proxies = self._state.proxies if self._state.use_proxies else None
-
-        if proxies:
-            verify = False
 
         if 'synack.com/api/' in url:
             headers = {
