@@ -281,6 +281,7 @@ class Targets(Plugin):
                         pass
 
             scope.discard(None)
+            scope = list(scope)
 
             if len(scope) > 0:
                 if self._state.use_scratchspace:

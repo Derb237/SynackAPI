@@ -326,7 +326,25 @@ class Db(Plugin):
 
     def find_targets(self, **kwargs):
         session = self.Session()
-        targets = session.query(Target).filter_by(**kwargs).all()
+        query = session.query(Target)
+
+        filters = list()
+
+        for key, value in kwargs.items():
+            if hasattr(Target, key):
+                if kwargs.get('like'):
+                    filters.append(getattr(Target, key).like(f'%{value}%'))
+                else:
+                    filters.append(getattr(Target, key) == value)
+
+        if filters:
+            if kwargs.get('or'):
+                query = query.filter(sa.or_(*filters))
+            else:
+                query = query.filter(sa.and_(*filters))
+    
+        targets = query.all()
+
         session.expunge_all()
         session.close()
         return targets
