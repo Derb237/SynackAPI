@@ -49,36 +49,41 @@ class Missions(Plugin):
         missions -- List of missions from one of the get_missions functions
         """
         ret = {
-            "count": 0,
-            "value": 0,
-            "time": 0
+            'total': { 'count': 0, 'value': 0, 'time': 0 }
         }
-        for m in missions:
-            if m.get("status") == "CLAIMED":
+        for mission in missions:
+            codename = mission.get('listingCodename', 'UNKNOWN')
+            ret[codename] = ret.get(codename, {'count': 0, 'value': 0, 'time': 0})
+            ret[codename][count] += 1
+            ret[codename]['value'] += mission['payout']['amount']
+            ret['total']['count'] += 1
+            ret['total']['value'] += mission['payout']['amount']
+
+            if mission.get('status') == 'CLAIMED':
                 utc = datetime.utcnow()
                 try:
-                    claimed_on = datetime.strptime(m['claimedOn'],
-                                                   "%Y-%m-%dT%H:%M:%S.%fZ")
+                    claimed_on = datetime.strptime(mission['claimedOn'],
+                                                   '%Y-%m-%dT%H:%M:%S.%fZ')
                 except ValueError:
-                    claimed_on = datetime.strptime(m['claimedOn'],
-                                                   "%Y-%m-%dT%H:%M:%SZ")
+                    claimed_on = datetime.strptime(mission['claimedOn'],
+                                                   '%Y-%m-%dT%H:%M:%SZ')
                 try:
-                    modified_on = datetime.strptime(m['modifiedOn'],
-                                                    "%Y-%m-%dT%H:%M:%S.%fZ")
+                    modified_on = datetime.strptime(mission['modifiedOn'],
+                                                    '%Y-%m-%dT%H:%M:%S.%fZ')
                 except ValueError:
-                    modified_on = datetime.strptime(m['modifiedOn'],
-                                                    "%Y-%m-%dT%H:%M:%SZ")
+                    modified_on = datetime.strptime(mission['modifiedOn'],
+                                                    '%Y-%m-%dT%H:%M:%SZ')
                 report_time = claimed_on if claimed_on > modified_on else modified_on
                 elapsed = int((utc - report_time).total_seconds())
-                time = m['maxCompletionTimeInSecs'] - elapsed
-                if time < ret['time'] or ret['time'] == 0:
-                    ret['time'] = time
-            ret['count'] = ret['count'] + 1
-            ret['value'] = ret['value'] + m['payout']['amount']
+                time = mission['maxCompletionTimeInSecs'] - elapsed
+                if time < ret['total']['time'] or ret['total']['time'] == 0:
+                    ret['total']['time'] = time
+                if time < ret[codename]['time'] or ret[codename]['time'] == 0:
+                    ret[codename]['time'] = time
+
         return ret
 
-    def get(self, status="PUBLISHED",
-            max_pages=1, page=1, per_page=50, listing_uids=None):
+    def get(self, **kwargs):
         """Get a list of missions given a status
 
         Arguments:
@@ -91,6 +96,12 @@ class Missions(Plugin):
                     (Bad: per_page=5000, per_page=1&max_pages=10)
         listing_uids -- A specific listing ID to check for missions
         """
+        status = kwargs.get('status', 'PUBLISHED')
+        max_pages = kwargs.get('max_pages', 1)
+        page = kwargs.get('page', 1)
+        per_page = kwargs.get('per_page', 20)
+        listing_uids = kwargs.get('listing_uids', None)
+
         query = {
                 'status': status,
                 'perPage': per_page,
@@ -105,25 +116,28 @@ class Missions(Plugin):
         if res.status_code == 200:
             ret = res.json()
             if len(ret) == per_page and page < max_pages:
-                new = self.get(status,
-                               max_pages,
-                               page+1,
-                               per_page)
+                new = self.get(status=status,
+                               max_pages=max_pages,
+                               page=page+1,
+                               per_page=per_page)
                 ret.extend(new)
             return ret
         return []
 
-    def get_approved(self):
+    def get_approved(self, **kwargs):
         """Get a list of missions currently approved"""
-        return self.get("APPROVED")
+        kwargs['status'] = 'APPROVED'
+        return self.get(**kwargs)
 
-    def get_available(self):
+    def get_available(self, **kwargs):
         """Get a list of missions currently available"""
-        return self.get("PUBLISHED")
+        kwargs['status'] = 'PUBLISHED'
+        return self.get(**kwargs)
 
-    def get_claimed(self):
+    def get_claimed(self, **kwargs):
         """Get a list of all missions you currently have"""
-        return self.get("CLAIMED")
+        kwargs['status'] = 'CLAIMED'
+        return self.get(**kwargs)
 
     def get_count(self, status="PUBLISHED", listing_uids=None):
         """Get the number of missions currently available
@@ -164,9 +178,10 @@ class Missions(Plugin):
 
             return ret
 
-    def get_in_review(self):
+    def get_in_review(self, **kwargs):
         """Get a list of missions currently in review"""
-        return self.get("FOR_REVIEW")
+        kwargs['status'] = 'FOR_REVIEW'
+        return self.get(**kwargs)
 
     def get_wallet_claimed(self):
         """Get Current Claimed Amount for Mission Wallet"""
