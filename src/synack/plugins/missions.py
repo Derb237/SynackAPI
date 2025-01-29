@@ -78,7 +78,7 @@ class Missions(Plugin):
         return ret
 
     def get(self, status="PUBLISHED",
-            max_pages=1, page=1, per_page=20, listing_uids=None):
+            max_pages=1, page=1, per_page=50, listing_uids=None):
         """Get a list of missions given a status
 
         Arguments:
@@ -198,7 +198,7 @@ class Missions(Plugin):
         """
         return self.set_status(mission, "DISCLAIM")
 
-    def set_evidences(self, mission, template=None):
+    def set_evidences(self, mission, template=None, force=False):
         """Upload a template to a mission
 
         Arguments:
@@ -212,7 +212,7 @@ class Missions(Plugin):
             if curr:
                 for f in ['introduction', 'testing_methodology',
                           'conclusion']:
-                    if len(curr.get(f)) >= 20:
+                    if len(curr.get(f)) >= 20 and force == False:
                         safe = False
                         break
             if safe:

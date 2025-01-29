@@ -70,6 +70,14 @@ class Db(Plugin):
                     'ip': result['ip'],
                     'target': result['target']
                 })
+                if len(ips_data) > 15000:
+                    stmt = sqlite_insert(IP).values(ips_data)
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=['ip', 'target'],
+                    )
+                    session.execute(stmt)
+                    ips_data = list()
+
 
         if ips_data:
             stmt = sqlite_insert(IP).values(ips_data)
@@ -128,6 +136,19 @@ class Db(Plugin):
                         'open': port.get('open'),
                         'updated': port.get('updated')
                     })
+                    if len(ports_data) > 15000:
+                        stmt = sqlite_insert(Port).values(ports_data)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=['port', 'protocol', 'ip', 'source'],
+                            set_={
+                                'service': stmt.excluded.service,
+                                'open': stmt.excluded.open,
+                                'updated': stmt.excluded.updated
+                            }
+                        )
+                        session.execute(stmt)
+                        ports_data = list()
+
 
         if ports_data:
             stmt = sqlite_insert(Port).values(ports_data)
