@@ -206,7 +206,7 @@ class Targets(Plugin):
             if res.status_code == 200:
                 return res.json()
 
-    def get_query(self, status='registered', query_changes={}):
+    def get(self, status='registered', query_changes={}):
         """Get information about targets returned from a query"""
         if not self._db.categories:
             self.get_assessments()
@@ -356,7 +356,7 @@ class Targets(Plugin):
 
     def get_unregistered(self):
         """Get slugs of all unregistered targets"""
-        return self.get_query(status='unregistered')
+        return self.get(status='unregistered')
 
     def get_upcoming(self):
         """Get slugs and upcoming start dates of all upcoming targets"""
@@ -364,7 +364,7 @@ class Targets(Plugin):
             'sorting[field]': 'upcomingStartDate',
             'sorting[direction]': 'asc'
         }
-        return self.get_query(status='upcoming', query_changes=query_changes)
+        return self.get(status='upcoming', query_changes=query_changes)
 
     def set_connected(self, target=None, **kwargs):
         """Connect to a target"""

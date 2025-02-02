@@ -403,7 +403,7 @@ class TargetsTestCase(unittest.TestCase):
                          self.targets.get_credentials(codename='SLEEPYSLUG'))
         self.targets._api.request.assert_called_with('POST', url)
 
-    def test_get_query(self):
+    def test_get(self):
         """Should get a list of targets"""
         self.targets._db.categories = [
             Category(id=1, passed_practical=True,  passed_written=True),
@@ -429,7 +429,7 @@ class TargetsTestCase(unittest.TestCase):
                                                      "targets",
                                                      query=query)
 
-    def test_get_query_assessments_empty(self):
+    def test_get_assessments_empty(self):
         """Should get a list of unregistered targets"""
         self.targets.get_assessments = MagicMock()
         self.targets._db.categories = []
@@ -776,10 +776,10 @@ class TargetsTestCase(unittest.TestCase):
         results = [
             {'codename': 'SLEEPYSLUG', 'slug': '1283hi'}
         ]
-        self.targets.get_query = MagicMock()
-        self.targets.get_query.return_value = results
+        self.targets.get = MagicMock()
+        self.targets.get.return_value = results
         self.assertEqual(results, self.targets.get_unregistered())
-        self.targets.get_query.assert_called_with(status='unregistered')
+        self.targets.get.assert_called_with(status='unregistered')
 
     def test_get_upcoming(self):
         """Should query for upcoming targets"""
@@ -790,10 +790,10 @@ class TargetsTestCase(unittest.TestCase):
             'sorting[field]': 'upcomingStartDate',
             'sorting[direction]': 'asc'
         }
-        self.targets.get_query = MagicMock()
-        self.targets.get_query.return_value = results
+        self.targets.get = MagicMock()
+        self.targets.get.return_value = results
         self.assertEqual(results, self.targets.get_upcoming())
-        self.targets.get_query.assert_called_with(status='upcoming', query_changes=query_changes)
+        self.targets.get.assert_called_with(status='upcoming', query_changes=query_changes)
 
     def test_set_connected(self):
         """Should connect to a given target provided kwargs"""

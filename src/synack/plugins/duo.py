@@ -63,7 +63,7 @@ class Duo(Plugin):
     def _get_mfa_details(self):
         if self._state.otp_secret:
             self._device = 'null'
-            self._hotp = pyotp.HOTP(s=self._state.otp_secret).generate_otp(self._state.otp_count)
+            self._hotp = pyotp.HOTP(s=self._state.otp_secret).generate_otp(int(self._state.otp_count))
             self._factor = 'Passcode'
             return
 

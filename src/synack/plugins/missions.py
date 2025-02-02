@@ -54,7 +54,7 @@ class Missions(Plugin):
         for mission in missions:
             codename = mission.get('listingCodename', 'UNKNOWN')
             ret[codename] = ret.get(codename, {'count': 0, 'value': 0, 'time': 0})
-            ret[codename][count] += 1
+            ret[codename]['count'] += 1
             ret[codename]['value'] += mission['payout']['amount']
             ret['total']['count'] += 1
             ret['total']['value'] += mission['payout']['amount']
@@ -83,7 +83,7 @@ class Missions(Plugin):
 
         return ret
 
-    def get(self, **kwargs):
+    def get(self, status='PUBLISHED', max_pages=1, page=1, per_page=20, listing_uids=None, **kwargs):
         """Get a list of missions given a status
 
         Arguments:
@@ -96,12 +96,6 @@ class Missions(Plugin):
                     (Bad: per_page=5000, per_page=1&max_pages=10)
         listing_uids -- A specific listing ID to check for missions
         """
-        status = kwargs.get('status', 'PUBLISHED')
-        max_pages = kwargs.get('max_pages', 1)
-        page = kwargs.get('page', 1)
-        per_page = kwargs.get('per_page', 20)
-        listing_uids = kwargs.get('listing_uids', None)
-
         query = {
                 'status': status,
                 'perPage': per_page,
