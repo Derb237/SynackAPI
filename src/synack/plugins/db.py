@@ -9,7 +9,6 @@ import sqlalchemy as sa
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from pprint import pprint
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from synack.db.models import Target
@@ -99,8 +98,14 @@ class Db(Plugin):
 
         organizations_data = list()
 
+        if isinstance(targets, dict):
+            targets = [value for key, value in targets.items()]
+
         for target in targets:
-            slug = target.get('organization_id', target.get('organization', {}).get('slug'))
+            if isinstance(target.get('organization'), str):
+                slug = target.get('organization')
+            else:
+                slug = target.get('organization_id', target.get('organization', {}).get('slug'))
             if slug:
                 organizations_data.append({'slug': slug})
 
@@ -173,19 +178,29 @@ class Db(Plugin):
 
         targets_data = list()
 
+        if isinstance(targets, dict):
+            targets = [value for key, value in targets.items()]
+
         for target in targets:
-            org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
+            if isinstance(target.get('organization'), str):
+                org_slug = target.get('organization')
+            else:
+                org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
+            if isinstance(target.get('category'), int):
+                category = target.get('category')
+            else:
+                category = target.get('category', {}).get('id')
             if org_slug in db_orgs:
                 target_data = {
                     'slug': target.get('id', target.get('slug')),
                     'codename': target.get('codename'),
-                    'category': target['category']['id'],
+                    'category': category,
                     'organization': org_slug,
-                    'date_updated': target.get('dateUpdated'),
-                    'is_active': target.get('isActive'),
-                    'is_new': target.get('isNew'),
-                    'is_registered': target.get('isRegistered'),
-                    'last_submitted': target.get('lastSubmitted')
+                    'date_updated': target.get('dateUpdated', target.get('date_updated')),
+                    'is_active': target.get('isActive', target.get('is_active')),
+                    'is_new': target.get('isNew', target.get('is_new')),
+                    'is_registered': target.get('isRegistered', target.get('is_registered')),
+                    'last_submitted': target.get('lastSubmitted', target.get('last_submitted'))
                 }
                 target_data.update(kwargs)
                 targets_data.append(target_data)
