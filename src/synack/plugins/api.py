@@ -144,10 +144,9 @@ class Api(Plugin):
                         f"\n\tData: {data}" +
                         f"\n\tContent: {res.content}")
 
-        if res.status_code == 429:
-            attempts = kwargs.get('attempts', 0)
-            if attempts < 5:
-                time.sleep(30)
-                attempts += 1
-                return self.request(method, path, attempts, **kwargs)
+        if res.status_code == 429 and attempts < 5:
+            time.sleep(30)
+            attempts += 1
+            return self.request(method, path, attempts, **kwargs)
+
         return res

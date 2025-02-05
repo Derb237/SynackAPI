@@ -53,9 +53,10 @@ class Missions(Plugin):
         }
         for mission in missions:
             codename = mission.get('listingCodename', 'UNKNOWN')
-            ret[codename] = ret.get(codename, {'count': 0, 'value': 0, 'time': 0})
+            ret[codename] = ret.get(codename, {'count': 0, 'value': 0, 'time': 0, 'titles': list()})
             ret[codename]['count'] += 1
             ret[codename]['value'] += mission['payout']['amount']
+            ret[codename]['titles'].append(mission['title'])
             ret['total']['count'] += 1
             ret['total']['value'] += mission['payout']['amount']
 
