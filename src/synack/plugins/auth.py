@@ -95,7 +95,8 @@ class Auth(Plugin):
             "loc.replace('https://platform." + self._state.synack_domain + "');" +\
             "}};" +\
             "(function() {" +\
-            "sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
+            "sessionStorage.setItem('shared-session-" +\
+            '.'.join(reversed(self._state.synack_domain.split('.'))) + ".accessToken'" +\
             ",'" +\
             self._state.api_token +\
             "');" +\
