@@ -89,17 +89,16 @@ class Auth(Plugin):
         return False
 
     def set_login_script(self):
-        script = "let forceLogin = () => {" +\
+        script = "(function() {sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
+            ",'" +\
+            self._state.api_token +\
+            "');})();" +\
+            "let forceLogin = () => {" +\
             "const loc = window.location;" +\
             "if(loc.href.startsWith('https://login." + self._state.synack_domain + "/')) {" +\
             "loc.replace('https://platform." + self._state.synack_domain + "');" +\
             "}};" +\
             "(function() {" +\
-            "sessionStorage.setItem('shared-session-" +\
-            '.'.join(reversed(self._state.synack_domain.split('.'))) + ".accessToken'" +\
-            ",'" +\
-            self._state.api_token +\
-            "');" +\
             "setTimeout(forceLogin,60000);" +\
             "let btn = document.createElement('button');" +\
             "btn.addEventListener('click',forceLogin);" +\
