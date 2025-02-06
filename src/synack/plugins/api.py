@@ -144,9 +144,23 @@ class Api(Plugin):
                         f"\n\tData: {data}" +
                         f"\n\tContent: {res.content}")
 
-        if res.status_code == 429 and attempts < 5:
-            time.sleep(30)
-            attempts += 1
-            return self.request(method, path, attempts, **kwargs)
+        if res.status_code in [ 400, 403 ]:
+            print('Request failed... Bailing!')
+            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+        elif res.status_code == 429:
+            print('Too many requests! Slow down there, cowpoke!')
+            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                attempts += 1
+                print('\tRetrying in 30 seconds...')
+                time.sleep(30)
+                return self.request(method, path, attempts, **kwargs)
+        elif res.status_code >= 400:
+            print(f'Request failed...')
+            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+            if attempts <= 5:
+                attempts += 1
+                print(f'Retry #{attempts + 1}')
+                return self.request(method, path, attempts, **kwargs)
 
         return res
