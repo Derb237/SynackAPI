@@ -18,7 +18,7 @@ class Utils(Plugin):
 
     @staticmethod
     def get_html_tag_value(field, text):
-        match = re.search(f'<[^>]*name=.{field}.[^>]*value=.([^"\']*)', text)
+        match = re.search(f'<[^>]*name=.{field}.[^>]*(?:content|value)=.([^"\']*)', text)
         if match.group is None:
-            match = re.search(f'<[^>]*value=.([^"\']*)[^>]*name=.{field}', text)
+            match = re.search(f'<[^>]*(?:content|value)=.([^"\']*)[^>]*name=.{field}', text)
         return match.group(1) if match else ''

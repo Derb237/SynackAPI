@@ -26,6 +26,7 @@ class Duo(Plugin):
         self._factor = None
         self._grant_token = None
         self._hotp = None
+        self._progress_token = None
         self._referrer = None
         self._session_vars = None
         self._status = None
@@ -58,7 +59,23 @@ class Duo(Plugin):
             self._get_status()
         if self._status == 'SUCCESS':
             self._get_oidc_exit()
+            if self._progress_token:
+                self._get_grant_token()
             return self._grant_token
+
+    def _get_grant_token(self):
+        headers = {
+            'X-Csrf-Token': self._xsrf
+        }
+        data = {
+            'progress_token': self._progress_token
+        }
+        res = self._api.login('POST',
+                                'authenticate',
+                                data=data,
+                                headers=headers)
+        if res.status_code == 200:
+            self._grant_token = res.json().get('grant_token')
 
     def _get_mfa_details(self):
         if self._state.otp_secret:
@@ -117,7 +134,11 @@ class Duo(Plugin):
         }
         res = self._api.request('POST', f'{self._base_url}/frame/v4/oidc/exit', headers=headers, data=data)
         if res.status_code == 200:
-            self._grant_token = re.search('grant_token=([^&]*)', res.url).group(1)
+            try:
+                self._grant_token = re.search('grant_token=([^&]*)', res.url).group(1)
+            except AttributeError:
+                self._progress_token = re.search('token=([^&]*)', res.url).group(1)
+                self._xsrf = self._utils.get_html_tag_value('csrf-token', res.text)
 
     def _get_session_variables(self):
         self._referrer = f'https://login.{self._state.synack_domain}/'
@@ -125,7 +146,7 @@ class Duo(Plugin):
         if res.status_code == 200:
             self._sid = re.search('sid=([^&]*)', res.url).group(1)
             self._referrer = res.url
-            self._base_url = re.search('(https.*duosecurity.com)/', res.url).group(1)
+            self._base_url = re.search('(https.*duo[^.]*.com)/', res.url).group(1)
             self._xsrf = self._utils.get_html_tag_value('_xsrf', res.text)
 
             client_hints = base64.b64encode(json.dumps({
