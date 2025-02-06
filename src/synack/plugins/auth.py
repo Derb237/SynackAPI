@@ -29,7 +29,7 @@ class Auth(Plugin):
         if duo_auth_url:
             grant_token = self._duo.get_grant_token(duo_auth_url)
         if grant_token:
-            url = 'https://platform.synack.com/'
+            url = f'https://platform.{self._state.synack_domain}/'
             headers = {
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -68,7 +68,7 @@ class Auth(Plugin):
 
     def get_login_csrf(self):
         """Get the CSRF Token from the login page"""
-        res = self._api.request('GET', 'https://login.synack.com')
+        res = self._api.request('GET', f'https://login.{self._state.synack_domain}')
         m = re.search('<meta name="csrf-token" content="([^"]*)"',
                       res.text)
         return m.group(1)
@@ -91,8 +91,8 @@ class Auth(Plugin):
     def set_login_script(self):
         script = "let forceLogin = () => {" +\
             "const loc = window.location;" +\
-            "if(loc.href.startsWith('https://login.synack.com/')) {" +\
-            "loc.replace('https://platform.synack.com');" +\
+            "if(loc.href.startsWith('https://login." + self._state.synack_domain + "/')) {" +\
+            "loc.replace('https://platform." + self._state.synack_domain + "');" +\
             "}};" +\
             "(function() {" +\
             "sessionStorage.setItem('shared-session-com.synack.accessToken'" +\

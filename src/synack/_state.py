@@ -36,6 +36,7 @@ class State(object):
         self._smtp_server = None
         self._smtp_starttls = None
         self._smtp_username = None
+        self._synack_domain = None
         self._template_dir = None
         self._use_proxies = None
         self._use_scratchspace = None
@@ -142,6 +143,17 @@ class State(object):
         if type(value) == str:
             value = pathlib.Path(value).expanduser().resolve()
         self._config_dir = value
+
+    @property
+    def synack_domain(self):
+        ret = self._synack_domain
+        if ret is None:
+            ret = self._db.synack_domain
+        return ret
+
+    @synack_domain.setter
+    def synack_domain(self, value):
+        self._synack_domain = value
 
     @property
     def template_dir(self) -> pathlib.PosixPath:

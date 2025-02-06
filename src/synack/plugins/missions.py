@@ -246,12 +246,12 @@ class Missions(Plugin):
         data = {
             "type": status
         }
-        orgId = mission["organizationUid"]
-        listingId = mission["listingUid"]
-        campaignId = mission["campaignUid"]
-        taskId = mission["id"]
-        payout = str(mission["payout"]["amount"])
-        title = mission["title"]
+        orgId = mission.get('organizationUid', 'unk')
+        listingId = mission.get('listingUid', 'unk')
+        campaignId = mission.get('campaignUid', 'unk')
+        taskId = mission.get('id')
+        payout = str(mission.get('payout', {}).get('amount', 'unk'))
+        title = mission.get('title', 'unk')
 
         res = self._api.request('POST',
                                 'tasks/v1' +

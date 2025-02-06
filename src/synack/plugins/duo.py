@@ -120,7 +120,7 @@ class Duo(Plugin):
             self._grant_token = re.search('grant_token=([^&]*)', res.url).group(1)
 
     def _get_session_variables(self):
-        self._referrer = 'https://login.synack.com/'
+        self._referrer = f'https://login.{self._state.synack_domain}/'
         res = self._api.request('GET', self._auth_url, headers=self._build_headers())
         if res.status_code == 200:
             self._sid = re.search('sid=([^&]*)', res.url).group(1)

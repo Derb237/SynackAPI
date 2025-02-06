@@ -30,7 +30,7 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://login.synack.com/api/'
+            base = f'https://login.{self._state.synack_domain}/api/'
         url = f'{base}{path}'
         res = self.request(method, url, **kwargs)
         return res
@@ -50,7 +50,7 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://notifications.synack.com/api/v2/'
+            base = f'https://notifications.{self._state.synack_domain}/api/v2/'
         url = f'{base}{path}'
 
         if not kwargs.get('headers'):
@@ -79,7 +79,7 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://platform.synack.com/api/'
+            base = f'https://platform.{self._state.synack_domain}/api/'
         url = f'{base}{path}'
 
         verify = False
@@ -87,7 +87,7 @@ class Api(Plugin):
 
         proxies = self._state.proxies if self._state.use_proxies else None
 
-        if 'synack.com/api/' in url:
+        if f'{self._state.synack_domain}/api/' in url:
             headers = {
                 'Authorization': f'Bearer {self._state.api_token}',
                 'user_id': self._state.user_id
@@ -144,7 +144,7 @@ class Api(Plugin):
                         f"\n\tData: {data}" +
                         f"\n\tContent: {res.content}")
 
-        if res.status_code in [ 400, 403 ]:
+        if res.status_code in [ 400, 401, 403 ]:
             print('Request failed... Bailing!')
             print(f'\t({res.status_code} - {res.reason}) {res.url}')
         elif res.status_code == 429:
@@ -158,9 +158,9 @@ class Api(Plugin):
         elif res.status_code >= 400:
             print(f'Request failed...')
             print(f'\t({res.status_code} - {res.reason}) {res.url}')
-            if attempts <= 5:
+            if attempts < 5:
+                print(f'\tRetry attempt #{attempts + 1}')
                 attempts += 1
-                print(f'Retry #{attempts + 1}')
                 return self.request(method, path, attempts, **kwargs)
 
         return res

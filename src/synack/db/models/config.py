@@ -33,6 +33,7 @@ class Config(Base):
     smtp_email_to = sa.Column(sa.VARCHAR(250), default='')
     smtp_username = sa.Column(sa.VARCHAR(250), default='')
     smtp_starttls = sa.Column(sa.BOOLEAN, default=True)
+    synack_domain = sa.Column(sa.VARCHAR(100), default='synack.com')
     template_dir = sa.Column(sa.VARCHAR(250), default='~/Templates')
     user_id = sa.Column(sa.VARCHAR(20), default='')
     use_proxies = sa.Column(sa.BOOLEAN, default=False)

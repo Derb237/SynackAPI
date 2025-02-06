@@ -643,6 +643,14 @@ class Db(Plugin):
         return targets
 
     @property
+    def synack_domain(self):
+        return self.get_config('synack_domain')
+
+    @synack_domain.setter
+    def synack_domain(self, value):
+        self.set_config('synack_domain', value)
+
+    @property
     def template_dir(self):
         return Path(self.get_config('template_dir')).expanduser().resolve()
 
