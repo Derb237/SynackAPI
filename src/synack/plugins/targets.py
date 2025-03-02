@@ -100,6 +100,8 @@ class Targets(Plugin):
         if res.status_code == 200:
             self._db.add_categories(res.json())
             return self._db.categories
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_assets(self, target=None, asset_type=None, host_type=None, active='true',
                    scope=['in', 'discovered'], sort='location', sort_dir='asc',
@@ -150,6 +152,8 @@ class Targets(Plugin):
                 if self._state.use_scratchspace:
                     self._scratchspace.set_assets_file(res.text, target=target)
                 return res.json()
+            elif res.status_code == 403 and self._state.login:
+                self._auth.get_api_token()
 
     def get_attachments(self, target=None, **kwargs):
         """Get the attachments of a target."""
@@ -162,6 +166,8 @@ class Targets(Plugin):
         res = self._api.request('GET', f'targets/{target.slug}/resources')
         if res.status_code == 200:
             return res.json()
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_connected(self):
         """Return information about the currenly selected target"""
@@ -181,6 +187,8 @@ class Targets(Plugin):
                 "status": status
             }
             return ret
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_connections(self, target=None, **kwargs):
         """Get the connection details of a target."""
@@ -193,6 +201,8 @@ class Targets(Plugin):
         res = self._api.request('GET', "listing_analytics/connections", query={"listing_id": target.slug})
         if res.status_code == 200:
             return res.json()["value"]
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_credentials(self, **kwargs):
         """Get Credentials for a target"""
@@ -205,6 +215,8 @@ class Targets(Plugin):
                                     '/credentials')
             if res.status_code == 200:
                 return res.json()
+            elif res.status_code == 403 and self._state.login:
+                self._auth.get_api_token()
 
     def get(self, status='registered', query_changes={}):
         """Get information about targets returned from a query"""
@@ -225,6 +237,8 @@ class Targets(Plugin):
         if res.status_code == 200:
             self._db.add_targets(res.json(), is_registered=True)
             return res.json()
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_registered_summary(self):
         """Get information on your registered targets"""
@@ -235,6 +249,8 @@ class Targets(Plugin):
             ret = dict()
             for t in res.json():
                 ret[t['id']] = t
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
         return ret
 
     def get_scope(self, **kwargs):
@@ -338,6 +354,8 @@ class Targets(Plugin):
         res = self._api.request('GET', "listing_analytics/categories", query=query)
         if res.status_code == 200:
             return res.json()["value"]
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_submissions_summary(self, target=None, hours_ago=None, **kwargs):
         """Get a summary of the submission analytics of a target."""
@@ -353,6 +371,8 @@ class Targets(Plugin):
         res = self._api.request('GET', "listing_analytics/submissions", query=query)
         if res.status_code == 200:
             return res.json()["value"]
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_unregistered(self):
         """Get slugs of all unregistered targets"""
@@ -382,6 +402,8 @@ class Targets(Plugin):
             res = self._api.request('PUT', 'launchpoint', data={'listing_id': slug})
             if res.status_code == 200:
                 return self.get_connected()
+            elif res.status_code == 403 and self._state.login:
+                self._auth.get_api_token()
 
     def set_registered(self, targets=None):
         """Register all unregistered targets"""
@@ -395,6 +417,8 @@ class Targets(Plugin):
                                     data=data)
             if res.status_code == 200:
                 ret.append(t)
+            elif res.status_code == 403 and self._state.login:
+                self._auth.get_api_token()
         if len(targets) >= 15:
             ret.extend(self.set_registered())
         return ret

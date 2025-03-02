@@ -117,6 +117,8 @@ class Missions(Plugin):
                                per_page=per_page)
                 ret.extend(new)
             return ret
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
         return []
 
     def get_approved(self, **kwargs):
@@ -152,6 +154,8 @@ class Missions(Plugin):
                                 query=query)
         if res.status_code == 204:
             return int(res.headers.get('x-count', 0))
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
         return 0
 
     def get_evidences(self, mission):
@@ -172,6 +176,8 @@ class Missions(Plugin):
             ret["structuredResponse"] = mission["validResponses"][1]["value"]
 
             return ret
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_in_review(self, **kwargs):
         """Get a list of missions currently in review"""
@@ -184,6 +190,8 @@ class Missions(Plugin):
                                 'tasks/v2/researcher/claimed_amount')
         if res.status_code == 200:
             return int(res.json().get('claimedAmount', '0'))
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def get_wallet_limit(self):
         """Get Current Mission Wallet Limit"""
@@ -191,6 +199,8 @@ class Missions(Plugin):
                                 'profiles/me')
         if res.status_code == 200:
             return int(res.json().get('claim_limit', '0'))
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
 
     def set_claimed(self, mission):
         """Try to claim a single mission
@@ -236,6 +246,8 @@ class Missions(Plugin):
                     ret["title"] = mission["title"]
                     ret["codename"] = mission["listingCodename"]
                     return ret
+                elif res.status_code == 403 and self._state.login:
+                    self._auth.get_api_token()
 
     def set_status(self, mission, status):
         """Interact with single mission

@@ -21,3 +21,5 @@ class Transactions(Plugin):
         res = self._api.request('HEAD', 'transactions')
         if res.status_code == 200:
             return json.loads(res.headers.get('x-balance'))
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()

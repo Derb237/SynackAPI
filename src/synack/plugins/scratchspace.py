@@ -48,6 +48,8 @@ class Scratchspace(Plugin):
                         with open(dest_file, 'wb') as fp:
                             fp.write(res.content)
                             downloads.append(dest_file)
+                    elif res.status_code == 403 and self._state.login:
+                        self._auth.get_api_token()
         return downloads
 
     def set_file(self, content, filename, target=None, codename=None):

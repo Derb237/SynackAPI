@@ -144,23 +144,27 @@ class Api(Plugin):
                         f"\n\tData: {data}" +
                         f"\n\tContent: {res.content}")
 
-        if res.status_code in [ 400, 401, 403 ]:
-            print('Request failed... Bailing!')
-            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+        reason_failed = 'Request failed'
+        if res.status_code in [ 400, 401 ]:
+            reason_failed = 'Request failed'
+        elif res.status_code == 403:
+            reason_failed = 'Logged out'
+        elif res.status_code == 412:
+            fail_reason = 'Mission already claimed'
         elif res.status_code == 429:
-            print('Too many requests! Slow down there, cowpoke!')
-            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+            self._debug.log('Too many requests', f'({res.status_code} - {res.reason}) {res.url}')
             if attempts < 5:
-                attempts += 1
-                print('\tRetrying in 30 seconds...')
+                self._debug.log('Pausing', 'Retrying in 30 seconds...')
                 time.sleep(30)
+                attempts += 1
                 return self.request(method, path, attempts, **kwargs)
         elif res.status_code >= 400:
-            print(f'Request failed...')
-            print(f'\t({res.status_code} - {res.reason}) {res.url}')
+            self._debug.log(f'Request failed', f'({res.status_code} - {res.reason}) {res.url}')
             if attempts < 5:
-                print(f'\tRetry attempt #{attempts + 1}')
+                self._debug.log('Retrying', f'Attempt #{attempts + 1}')
                 attempts += 1
                 return self.request(method, path, attempts, **kwargs)
+
+        self._debug.log('Mission already claimed', f'({res.status_code} - {res.reason}) {res.url}')
 
         return res
