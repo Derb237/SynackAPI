@@ -164,11 +164,11 @@ class Missions(Plugin):
         Arguments:
         mission -- A single mission
         """
-        evidences = self._api.request('GET',
-                                      'tasks/v2/tasks/' +
-                                      mission['id'] +
-                                      '/evidences')
-        if evidences.status_code == 200:
+        res = self._api.request('GET',
+                                'tasks/v2/tasks/' +
+                                mission['id'] +
+                                '/evidences')
+        if res.status_code == 200:
             ret = evidences.json()
             ret["title"] = mission["title"]
             ret["asset"] = mission["assetTypes"][0]
