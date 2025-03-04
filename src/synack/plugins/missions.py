@@ -169,7 +169,7 @@ class Missions(Plugin):
                                 mission['id'] +
                                 '/evidences')
         if res.status_code == 200:
-            ret = evidences.json()
+            ret = res.json()
             ret["title"] = mission["title"]
             ret["asset"] = mission["assetTypes"][0]
             ret["taskType"] = mission["taskType"]
