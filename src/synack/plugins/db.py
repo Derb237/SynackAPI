@@ -428,8 +428,10 @@ class Db(Plugin):
         if not config:
             config = Config()
             session.add(config)
+            session.commit()
+        ret = getattr(config, name) if name else config
         session.close()
-        return getattr(config, name) if name else config
+        return ret
 
     @property
     def http_proxy(self):
