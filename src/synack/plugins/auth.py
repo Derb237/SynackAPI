@@ -3,7 +3,6 @@
 Functions related to handling and checking authentication.
 """
 
-import pyotp
 import re
 
 from .base import Plugin
@@ -12,106 +11,96 @@ from .base import Plugin
 class Auth(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for plugin in ['Api', 'Db', 'Users']:
+        for plugin in ['Api', 'Db', 'Duo', 'Users']:
             setattr(self,
-                    plugin.lower(),
-                    self.registry.get(plugin)(self.state))
-
-    def build_otp(self):
-        """Generate and return a OTP."""
-        totp = pyotp.TOTP(self.db.otp_secret)
-        totp.digits = 7
-        totp.interval = 10
-        totp.issuer = 'synack'
-        return totp.now()
+                    '_'+plugin.lower(),
+                    self._registry.get(plugin)(self._state))
 
     def get_api_token(self):
         """Log in to get a new API token."""
-        if self.users.get_profile():
-            return self.db.api_token
+        if self._api.request('HEAD', 'profiles/me').status_code == 200:
+            return self._state.api_token
         csrf = self.get_login_csrf()
-        progress_token = None
+        duo_auth_url = None
         grant_token = None
         if csrf:
-            progress_token = self.get_login_progress_token(csrf)
-        if progress_token:
-            grant_token = self.get_login_grant_token(csrf, progress_token)
+            auth_response = self.get_authentication_response(csrf)
+            duo_auth_url = auth_response.get('duo_auth_url', '')
+        if duo_auth_url:
+            grant_token = self._duo.get_grant_token(duo_auth_url)
         if grant_token:
-            url = 'https://platform.synack.com/'
+            url = f'https://platform.{self._state.synack_domain}/'
             headers = {
                 'X-Requested-With': 'XMLHttpRequest'
             }
             query = {
                 "grant_token": grant_token
             }
-            res = self.api.request('GET',
-                                   url + 'token',
-                                   headers=headers,
-                                   query=query)
+            res = self._api.request('GET',
+                                    url + 'token',
+                                    headers=headers,
+                                    query=query)
             if res.status_code == 200:
                 j = res.json()
-                self.db.api_token = j.get('access_token')
+                self._db.api_token = j.get('access_token')
                 self.set_login_script()
                 return j.get('access_token')
 
-    def get_login_csrf(self):
-        """Get the CSRF Token from the login page"""
-        res = self.api.request('GET', 'https://login.synack.com')
-        m = re.search('<meta name="csrf-token" content="([^"]*)"',
-                      res.text)
-        return m.group(1)
-
-    def get_login_grant_token(self, csrf, progress_token):
-        """Get grant token from authy totp verification"""
-        headers = {
-            'X-Csrf-Token': csrf
-        }
-        data = {
-            "authy_token": self.build_otp(),
-            "progress_token": progress_token
-        }
-        res = self.api.login('POST',
-                             'authenticate',
-                             headers=headers,
-                             data=data)
-        if res.status_code == 200:
-            return res.json().get("grant_token")
-
-    def get_login_progress_token(self, csrf):
-        """Get progress token from email and password login"""
+    def get_authentication_response(self, csrf):
+        """Get duo_auth_url from email and password login"""
         headers = {
             'X-CSRF-Token': csrf
         }
         data = {
-            'email': self.db.email,
-            'password': self.db.password
+            'email': self._state.email,
+            'password': self._state.password
         }
-        res = self.api.login('POST',
-                             'authenticate',
-                             headers=headers,
-                             data=data)
+        res = self._api.login('POST',
+                              'authenticate',
+                              headers=headers,
+                              data=data)
         if res.status_code == 200:
-            return res.json().get("progress_token")
+            return res.json()
+        elif res.status_code == 400:
+            self._db.email = ''
+            self._db.password = ''
+            raise ValueError("Invalid email or password. Please run the script again to re-enter credentials.")
+        elif res.status_code == 423:
+            raise ValueError("Your account has been locked due to too many failed login attempts. Please wait and try again later.")
+
+    def get_login_csrf(self):
+        """Get the CSRF Token from the login page"""
+        res = self._api.request('GET', f'https://login.{self._state.synack_domain}')
+        m = re.search('<meta name="csrf-token" content="([^"]*)"',
+                      res.text)
+        return m.group(1)
 
     def get_notifications_token(self):
         """Request a new Notifications Token"""
-        res = self.api.request('GET', 'users/notifications_token')
+        res = self._api.request('GET', 'users/notifications_token')
         if res.status_code == 200:
             j = res.json()
-            self.db.notifications_token = j['token']
+            self._db.notifications_token = j['token']
             return j['token']
 
+    def set_api_token_invalid(self):
+        res = self._api.request('POST', 'logout')
+        if res.status_code == 200:
+            self._db.api_token = ''
+            return True
+        return False
+
     def set_login_script(self):
-        script = "let forceLogin = () => {" +\
+        script = "(function() {sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
+            ",'" +\
+            self._state.api_token +\
+            "');})();" +\
+            "let forceLogin = () => {" +\
             "const loc = window.location;" +\
-            "if(loc.href.startsWith('https://login.synack.com/')) {" +\
-            "loc.replace('https://platform.synack.com');" +\
+            "if(loc.href.startsWith('https://login." + self._state.synack_domain + "/')) {" +\
+            "loc.replace('https://platform." + self._state.synack_domain + "');" +\
             "}};" +\
             "(function() {" +\
-            "sessionStorage.setItem('shared-session-com.synack.accessToken'" +\
-            ",'" +\
-            self.db.api_token +\
-            "');" +\
             "setTimeout(forceLogin,60000);" +\
             "let btn = document.createElement('button');" +\
             "btn.addEventListener('click',forceLogin);" +\
@@ -122,7 +111,7 @@ class Auth(Plugin):
             "document.getElementsByClassName('onboarding-form')[0]" +\
             ".appendChild(btn)}" +\
             ")();"
-        with open(self.state.config_dir / 'login.js', 'w') as fp:
+        with open(self._state.config_dir / 'login.js', 'w') as fp:
             fp.write(script)
 
         return script

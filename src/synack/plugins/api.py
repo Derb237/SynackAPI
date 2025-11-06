@@ -3,6 +3,7 @@
 Functions to handle interacting with the Synack APIs
 """
 
+import time
 import warnings
 
 from .base import Plugin
@@ -12,7 +13,7 @@ class Api(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for plugin in ['Debug', 'Db']:
-            setattr(self, plugin.lower(), self.registry.get(plugin)(self.state))
+            setattr(self, '_'+plugin.lower(), self._registry.get(plugin)(self._state))
 
     def login(self, method, path, **kwargs):
         """Modify API Request for Login
@@ -29,7 +30,7 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://login.synack.com/api/'
+            base = f'https://login.{self._state.synack_domain}/api/'
         url = f'{base}{path}'
         res = self.request(method, url, **kwargs)
         return res
@@ -49,20 +50,20 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://notifications.synack.com/api/v2/'
+            base = f'https://notifications.{self._state.synack_domain}/api/v2/'
         url = f'{base}{path}'
 
         if not kwargs.get('headers'):
             kwargs['headers'] = dict()
-        auth = "Bearer " + self.db.notifications_token
+        auth = "Bearer " + self._state.notifications_token
         kwargs['headers']['Authorization'] = auth
 
         res = self.request(method, url, **kwargs)
         if res.status_code == 422:
-            self.db.notifications_token = ""
+            self._db.notifications_token = ''
         return res
 
-    def request(self, method, path, **kwargs):
+    def request(self, method, path, attempts=0, **kwargs):
         """Send API Request
 
         Arguments:
@@ -70,6 +71,7 @@ class Api(Plugin):
                   (GET, POST, etc.)
         path -- API endpoint path
                 Can be an endpoint on platform.synack.com or a full URL
+        attempts -- Number of times the request has been attempted
         headers -- Additional headers to be added for only this request
         data -- POST body dictionary
         query -- GET query string dictionary
@@ -77,62 +79,98 @@ class Api(Plugin):
         if path.startswith('http'):
             base = ''
         else:
-            base = 'https://platform.synack.com/api/'
+            base = f'https://platform.{self._state.synack_domain}/api/'
         url = f'{base}{path}'
 
-        if self.db.use_proxies:
-            warnings.filterwarnings("ignore")
-            verify = False
-            proxies = self.db.proxies
-        else:
-            verify = True
-            proxies = None
+        verify = False
+        warnings.filterwarnings('ignore')
 
-        headers = {
-            'Authorization': f'Bearer {self.db.api_token}',
-            'user_id': self.db.user_id
-        }
+        proxies = self._state.proxies if self._state.use_proxies else None
+
+        if f'{self._state.synack_domain}/api/' in url:
+            headers = {
+                'Authorization': f'Bearer {self._state.api_token}',
+                'user_id': self._state.user_id
+            }
+        else:
+            headers = dict()
         if kwargs.get('headers'):
             headers.update(kwargs.get('headers', {}))
         query = kwargs.get('query')
         data = kwargs.get('data')
 
         if method.upper() == 'GET':
-            res = self.state.session.get(url,
-                                         headers=headers,
-                                         proxies=proxies,
-                                         params=query,
-                                         verify=verify)
-        elif method.upper() == 'HEAD':
-            res = self.state.session.head(url,
+            res = self._state.session.get(url,
                                           headers=headers,
                                           proxies=proxies,
                                           params=query,
                                           verify=verify)
-        elif method.upper() == 'PATCH':
-            res = self.state.session.patch(url,
-                                           json=data,
+        elif method.upper() == 'HEAD':
+            res = self._state.session.head(url,
                                            headers=headers,
                                            proxies=proxies,
+                                           params=query,
                                            verify=verify)
+        elif method.upper() == 'PATCH':
+            res = self._state.session.patch(url,
+                                            json=data,
+                                            headers=headers,
+                                            proxies=proxies,
+                                            verify=verify)
         elif method.upper() == 'POST':
-            res = self.state.session.post(url,
-                                          json=data,
+            if 'urlencoded' in headers.get('Content-Type', ''):
+                res = self._state.session.post(url,
+                                               data=data,
+                                               headers=headers,
+                                               proxies=proxies,
+                                               verify=verify)
+            else:
+                res = self._state.session.post(url,
+                                               json=data,
+                                               headers=headers,
+                                               proxies=proxies,
+                                               verify=verify)
+        elif method.upper() == 'PUT':
+            res = self._state.session.put(url,
                                           headers=headers,
                                           proxies=proxies,
+                                          params=data,
                                           verify=verify)
-        elif method.upper() == 'PUT':
-            res = self.state.session.put(url,
-                                         headers=headers,
-                                         proxies=proxies,
-                                         params=data,
-                                         verify=verify)
 
-        self.debug.log("Network Request",
-                       f"{res.status_code} -- {method.upper()} -- {url}" +
-                       f"\n\tHeaders: {headers}" +
-                       f"\n\tQuery: {query}" +
-                       f"\n\tData: {data}" +
-                       f"\n\tContent: {res.content}")
+        self._debug.log("Network Request",
+                        f"{res.status_code} -- {method.upper()} -- {url}" +
+                        f"\n\tHeaders: {headers}" +
+                        f"\n\tQuery: {query}" +
+                        f"\n\tData: {data}" +
+                        f"\n\tContent: {res.content}")
+
+        reason_failed = None
+        if res.status_code == 400:
+            reason_failed = 'Bad request'
+        elif res.status_code == 401:
+            reason_failed = 'Unauthorized'
+        elif res.status_code == 403:
+            reason_failed = 'Logged out'
+        elif res.status_code == 412:
+            reason_failed = 'Mission already claimed'
+        elif res.status_code == 423:
+            reason_failed = 'Locked'
+        elif res.status_code == 429:
+            self._debug.log('Too many requests', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                self._debug.log('Pausing', 'Retrying in 30 seconds...')
+                time.sleep(30)
+                attempts += 1
+                return self.request(method, path, attempts, **kwargs)
+        elif res.status_code >= 400:
+            self._debug.log(f'Request failed', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                self._debug.log('Retrying', f'Attempt #{attempts + 1}')
+                attempts += 1
+                return self.request(method, path, attempts, **kwargs)
+
+        # Log terminal failures (non-retryable errors)
+        if res.status_code in [400, 401, 403, 412, 423]:
+            self._debug.log(reason_failed, f'({res.status_code} - {res.reason}) {res.url}')
 
         return res

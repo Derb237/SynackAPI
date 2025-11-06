@@ -19,8 +19,9 @@ from synack.db.models import Target  # noqa: E402
 class TemplatesTestCase(unittest.TestCase):
     def setUp(self):
         self.state = synack._state.State()
+        self.state._db = MagicMock()
         self.templates = synack.plugins.Templates(self.state)
-        self.templates.db = MagicMock()
+        self.templates._db = MagicMock()
 
     def test_build_filepath_from_evidences(self):
         """Should return path from evidences json"""
@@ -35,7 +36,7 @@ class TemplatesTestCase(unittest.TestCase):
             'asset': 'web',
             'title': 'Mission'
         }
-        self.templates.db.template_dir = pathlib.Path('/tmp')
+        self.templates._state.template_dir = pathlib.Path('/tmp')
         self.assertEqual('/tmp/mission/web/mission.txt',
                          self.templates.build_filepath(mission))
 
@@ -54,7 +55,7 @@ class TemplatesTestCase(unittest.TestCase):
             ],
             'title': 'Mission'
         }
-        self.templates.db.template_dir = pathlib.Path('/tmp')
+        self.templates._state.template_dir = pathlib.Path('/tmp')
         self.assertEqual('/tmp/mission/web/mission.txt',
                          self.templates.build_filepath(mission))
 
@@ -75,16 +76,16 @@ class TemplatesTestCase(unittest.TestCase):
         }
         with patch('pathlib.Path.exists') as mock_exists:
             mock_exists.side_effect = [False, True]
-            self.templates.db.template_dir = pathlib.Path('/tmp')
+            self.templates._state.template_dir = pathlib.Path('/tmp')
             self.assertEqual('/tmp/mission/web/generic.txt',
                              self.templates.build_filepath(mission, generic_ok=True))
 
     def test_build_safe_name(self):
         """Should convert complex missions names to something simpler"""
-        self.templates.alerts = MagicMock()
-        self.templates.alerts.sanitize.return_value = "S!oME_RaNdOm___MISSION!"
+        self.templates._alerts = MagicMock()
+        self.templates._alerts.sanitize.return_value = "S!oME_RaNdOm___MISSION!"
         one = self.templates.build_safe_name("S!oME_RaNdOm___MISSION!")
-        self.templates.alerts.sanitize.assert_called_with("S!oME_RaNdOm___MISSION!")
+        self.templates._alerts.sanitize.assert_called_with("S!oME_RaNdOm___MISSION!")
         one_out = "s_ome_random_mission_"
         self.assertEqual(one_out, one)
 
@@ -111,22 +112,22 @@ class TemplatesTestCase(unittest.TestCase):
 
     def test_build_text_replaced_variables(self):
         """Should replace variables in text given text and Target info"""
-        self.templates.db.find_targets = MagicMock()
+        self.templates._db.find_targets = MagicMock()
         tgts = [Target(codename='SNEAKYSASQUATCH', slug='38h24iu')]
-        self.templates.db.find_targets.return_value = tgts
+        self.templates._db.find_targets.return_value = tgts
         input_text = "The target is {{ TARGET_CODENAME }}"
         expected_output = "The target is SNEAKYSASQUATCH"
-        self.assertEquals(self.templates.build_replace_variables(input_text, target=tgts[0]), expected_output)
+        self.assertEqual(self.templates.build_replace_variables(input_text, target=tgts[0]), expected_output)
 
     def test_build_text_replaced_variables_codename(self):
         """Should replace variables in text given text and codename"""
-        self.templates.db.find_targets = MagicMock()
+        self.templates._db.find_targets = MagicMock()
         tgts = [Target(codename='SNEAKYSASQUATCH', slug='38h24iu')]
-        self.templates.db.find_targets.return_value = tgts
+        self.templates._db.find_targets.return_value = tgts
         input_text = "The target is {{ TARGET_CODENAME }}"
         expected_output = "The target is SNEAKYSASQUATCH"
         actual_output = self.templates.build_replace_variables(input_text, codename='SLEEPYSASQUATCH')
-        self.assertEquals(actual_output, expected_output)
+        self.assertEqual(actual_output, expected_output)
 
     def test_get_file(self):
         self.templates.build_filepath = MagicMock()

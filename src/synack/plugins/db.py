@@ -7,6 +7,8 @@ import alembic.config
 import alembic.command
 import sqlalchemy as sa
 
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from synack.db.models import Target
@@ -23,11 +25,14 @@ from .base import Plugin
 class Db(Plugin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sqlite_db = self.state.config_dir / 'synackapi.db'
+        self.sqlite_db = self._state.config_dir / 'synackapi.db'
 
         self.set_migration()
 
         engine = sa.create_engine(f'sqlite:///{str(self.sqlite_db)}')
+        metadata = sa.MetaData()
+        metadata.reflect(bind=engine)
+        metadata.clear()
         sa.event.listen(engine, 'connect', self._fk_pragma_on_connect)
         self.Session = sessionmaker(bind=engine)
 
@@ -44,139 +49,226 @@ class Db(Plugin):
                 db_c = Category(id=c['category_id'])
                 session.add(db_c)
             db_c.name = c['category_name']
-            db_c.passed_practical = c['practical_assessment']['passed']
-            db_c.passed_written = c['written_assessment']['passed']
+            db_c.passed_practical = c['passed']
+            db_c.passed_written = c['passed']
         session.commit()
         session.close()
 
     def add_ips(self, results, session=None):
         close = False
+
         if session is None:
             session = self.Session()
             close = True
-        q = session.query(IP)
+
+        ips_data = list()
+
         for result in results:
-            if result.get('ip'):
-                filt = sa.and_(
-                    IP.ip.like(result.get('ip')),
-                    IP.target.like(result.get('target'))
-                )
-                db_ip = q.filter(filt).first()
-                if not db_ip:
-                    db_ip = IP(
-                        ip=result.get('ip'),
-                        target=result.get('target'))
-                    session.add(db_ip)
+            if result.get('ip') and result.get('target'):
+                ips_data.append({
+                    'ip': result['ip'],
+                    'target': result['target']
+                })
+                if len(ips_data) > 15000:
+                    stmt = sqlite_insert(IP).values(ips_data)
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=['ip', 'target'],
+                    )
+                    session.execute(stmt)
+                    ips_data = list()
+
+
+        if ips_data:
+            stmt = sqlite_insert(IP).values(ips_data)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=['ip', 'target'],
+            )
+            session.execute(stmt)
+
         if close:
             session.commit()
             session.close()
 
     def add_organizations(self, targets, session=None):
         close = False
+
         if session is None:
             session = self.Session()
             close = True
-        q = session.query(Organization)
-        for t in targets:
-            if t.get('organization'):
-                slug = t['organization']['slug']
+
+        organizations_data = list()
+
+        if isinstance(targets, dict):
+            targets = [value for key, value in targets.items()]
+
+        for target in targets:
+            if isinstance(target.get('organization'), str):
+                slug = target.get('organization')
+                name = None  # No name available in this case
             else:
-                slug = t.get('organization_id')
-            db_o = q.filter_by(slug=slug).first()
-            if not db_o:
-                db_o = Organization(slug=slug)
-                session.add(db_o)
+                org = target.get('organization', {})
+                slug = target.get('organization_id', org.get('slug'))
+                name = org.get('name')
+            if slug:
+                organizations_data.append({
+                    'slug': slug,
+                    'name': name
+                })
+
+        if organizations_data:
+            stmt = sqlite_insert(Organization).values(organizations_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['slug'],
+                set_={
+                    'name': stmt.excluded.name
+                }
+            )
+            session.execute(stmt)
+
         if close:
             session.commit()
             session.close()
 
     def add_ports(self, results):
-        self.add_ips(results)
         session = self.Session()
-        q = session.query(Port)
-        ips = session.query(IP)
+
+        self.add_ips(results, session)
+        ip_map = {ip.ip: ip.id for ip in session.query(IP.ip, IP.id).all()}
+
+        ports_data = list()
+
         for result in results:
-            ip = ips.filter_by(ip=result.get('ip'))
-            if ip:
-                ip = ip.first()
+            ip_id = ip_map.get(result.get('ip'))
+            if ip_id:
                 for port in result.get('ports', []):
-                    filt = sa.and_(
-                        Port.port.like(port.get('port')),
-                        Port.protocol.like(port.get('protocol')),
-                        Port.ip.like(ip.id),
-                        Port.source.like(result.get('source')))
-                    db_port = q.filter(filt)
-                    if not db_port:
-                        db_port = Port(
-                            port=port.get('port'),
-                            protocol=port.get('protocol'),
-                            service=port.get('service'),
-                            ip=ip.id,
-                            source=result.get('source'),
-                            open=port.get('open'),
-                            updated=port.get('updated')
+                    ports_data.append({
+                        'port': port.get('port'),
+                        'protocol': port.get('protocol'),
+                        'service': port.get('service'),
+                        'ip': ip_id,
+                        'source': result.get('source'),
+                        'open': port.get('open'),
+                        'updated': port.get('updated')
+                    })
+                    if len(ports_data) > 15000:
+                        stmt = sqlite_insert(Port).values(ports_data)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=['port', 'protocol', 'ip', 'source'],
+                            set_={
+                                'service': stmt.excluded.service,
+                                'open': stmt.excluded.open,
+                                'updated': stmt.excluded.updated
+                            }
                         )
-                    else:
-                        db_port = db_port.first()
-                        db_port.service = port.get('service', db_port.service)
-                        db_port.open = port.get('open', db_port.open)
-                        db_port.updated = port.get('updated', db_port.updated)
-                    session.add(db_port)
+                        session.execute(stmt)
+                        ports_data = list()
+
+
+        if ports_data:
+            stmt = sqlite_insert(Port).values(ports_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['port', 'protocol', 'ip', 'source'],
+                set_={
+                    'service': stmt.excluded.service,
+                    'open': stmt.excluded.open,
+                    'updated': stmt.excluded.updated
+                }
+            )
+            session.execute(stmt)
+
         session.commit()
         session.close()
 
     def add_targets(self, targets, **kwargs):
         session = self.Session()
+
         self.add_organizations(targets, session)
-        q = session.query(Target)
-        for t in targets:
-            if t.get('organization'):
-                org_slug = t['organization']['slug']
+        db_orgs = [org[0] for org in session.query(Organization.slug).all()]
+
+        targets_data = list()
+
+        if isinstance(targets, dict):
+            targets = [value for key, value in targets.items()]
+
+        for target in targets:
+            if isinstance(target.get('organization'), str):
+                org_slug = target.get('organization')
             else:
-                org_slug = t.get('organization_id')
-            slug = t.get('slug', t.get('id'))
-            db_t = q.filter_by(slug=slug).first()
-            if not db_t:
-                db_t = Target(slug=slug)
-                session.add(db_t)
-            for k in t.keys():
-                setattr(db_t, k, t[k])
-            db_t.category = t['category']['id']
-            db_t.organization = org_slug
-            db_t.date_updated = t.get('dateUpdated')
-            db_t.is_active = t.get('isActive')
-            db_t.is_new = t.get('isNew')
-            db_t.is_registered = t.get('isRegistered')
-            db_t.is_updated = t.get('isUpdated')
-            db_t.last_submitted = t.get('lastSubmitted')
-            for k in kwargs.keys():
-                setattr(db_t, k, kwargs[k])
+                org_slug = target.get('organization_id', target.get('organization', {}).get('slug'))
+            if isinstance(target.get('category'), int):
+                category = target.get('category')
+            else:
+                category = target.get('category', {}).get('id')
+            if org_slug in db_orgs:
+                target_data = {
+                    'slug': target.get('id', target.get('slug')),
+                    'codename': target.get('codename'),
+                    'category': category,
+                    'organization': org_slug,
+                    'date_updated': target.get('dateUpdated', target.get('date_updated')),
+                    'is_active': target.get('isActive', target.get('is_active')),
+                    'is_new': target.get('isNew', target.get('is_new')),
+                    'is_registered': target.get('isRegistered', target.get('is_registered')),
+                    'last_submitted': target.get('lastSubmitted', target.get('last_submitted')),
+                    'average_payout': target.get('averagePayout'),
+                    'start_date': target.get('start_date'),
+                    'end_date': target.get('end_date'),
+                    'is_updated': target.get('isUpdated', False)
+                }
+                target_data.update(kwargs)
+                targets_data.append(target_data)
+
+        if targets_data:
+            stmt = sqlite_insert(Target).values(targets_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['slug'],
+                set_={
+                    'category': stmt.excluded.category,
+                    'codename': stmt.excluded.codename,
+                    'organization': stmt.excluded.organization,
+                    'date_updated': stmt.excluded.date_updated,
+                    'is_active': stmt.excluded.is_active,
+                    'is_new': stmt.excluded.is_new,
+                    'is_registered': stmt.excluded.is_registered,
+                    'last_submitted': stmt.excluded.last_submitted,
+                    'average_payout': stmt.excluded.average_payout,
+                    'start_date': stmt.excluded.start_date,
+                    'end_date': stmt.excluded.end_date,
+                    'is_updated': stmt.excluded.is_updated
+                }
+            )
+            session.execute(stmt)
+
         session.commit()
         session.close()
 
-    def add_urls(self, results, **kwargs):
-        self.add_ips(results)
+    def add_urls(self, results):
         session = self.Session()
-        q = session.query(Url)
-        ips = session.query(IP)
+
+        self.add_ips(results, session)
+        ip_map = {ip.ip: ip.id for ip in session.query(IP.ip, IP.id).all()}
+
+        urls_data = list()
+
         for result in results:
-            ip = ips.filter_by(ip=result.get('ip')).first()
-            for url in result.get('urls', []):
-                if ip:
-                    filt = sa.and_(
-                        Url.url.like(url.get('url')),
-                        Url.ip.like(ip.id))
-                else:
-                    filt = sa.and_(
-                        Url.url.like(url.get('url')))
-                db_url = q.filter(filt).first()
-                if not db_url:
-                    db_url = Url()
-                db_url.url = url.get('url')
-                db_url.screenshot_url = url.get('screenshot_url')
-                if ip:
-                    db_url.ip = ip.id
-                session.add(db_url)
+            ip_id = ip_map.get(result.get('ip'))
+            if ip_id:
+                for url in result.get('urls', []):
+                    urls_data.append({
+                        'url': url.get('url'),
+                        'screenshot_url': url.get('screenshot_url')
+                    })
+
+        if urls_data:
+            stmt = sqlite_insert(Url).values(urls_data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['ip', 'url'],
+                set_={
+                    'screenshot_url': stmt.excluded.screenshot_url
+                }
+            )
+            session.execute(stmt)
+
         session.commit()
         session.close()
 
@@ -197,30 +289,22 @@ class Db(Plugin):
 
     @property
     def debug(self):
-        if self.state.debug is None:
-            return self.get_config('debug')
-        else:
-            return self.state.debug
+        return self.get_config('debug')
 
     @debug.setter
     def debug(self, value):
-        self.state.debug = value
         self.set_config('debug', value)
 
     @property
     def email(self):
-        if self.state.email is None:
-            ret = self.get_config('email')
-            if not ret:
-                ret = input("Synack Email: ")
-                self.email = ret
-            return ret
-        else:
-            return self.state.email
+        ret = self.get_config('email')
+        if not ret:
+            ret = input('Synack Email: ')
+            self.email = ret
+        return ret
 
     @email.setter
     def email(self, value):
-        self.state.email = value
         self.set_config('email', value)
 
     def find_ips(self, ip=None, **kwargs):
@@ -295,7 +379,25 @@ class Db(Plugin):
 
     def find_targets(self, **kwargs):
         session = self.Session()
-        targets = session.query(Target).filter_by(**kwargs).all()
+        query = session.query(Target)
+
+        filters = list()
+
+        for key, value in kwargs.items():
+            if hasattr(Target, key):
+                if kwargs.get('like'):
+                    filters.append(getattr(Target, key).like(f'%{value}%'))
+                else:
+                    filters.append(getattr(Target, key) == value)
+
+        if filters:
+            if kwargs.get('or'):
+                query = query.filter(sa.or_(*filters))
+            else:
+                query = query.filter(sa.and_(*filters))
+
+        targets = query.all()
+
         session.expunge_all()
         session.close()
         return targets
@@ -343,8 +445,10 @@ class Db(Plugin):
         if not config:
             config = Config()
             session.add(config)
+            session.commit()
+        ret = getattr(config, name) if name else config
         session.close()
-        return getattr(config, name) if name else config
+        return ret
 
     @property
     def http_proxy(self):
@@ -378,37 +482,115 @@ class Db(Plugin):
         self.set_config('notifications_token', value)
 
     @property
+    def otp_count(self):
+        ret = self.get_config('otp_count')
+        if not ret:
+            ret = input('Synack OTP Count: ')
+            self.otp_count = int(ret)
+        return ret
+
+    @otp_count.setter
+    def otp_count(self, value):
+        self.set_config('otp_count', value)
+
+    @property
     def otp_secret(self):
-        if self.state.otp_secret is None:
-            ret = self.get_config('otp_secret')
-            if not ret:
-                ret = input("Synack OTP Secret: ")
+        ret = self.get_config('otp_secret')
+        if not ret:
+            # Skip prompt if automated push credentials are already configured
+            if self.duo_push_akey and self.duo_push_pkey and self.duo_push_host:
+                ret = ''
                 self.otp_secret = ret
-            self.state.otp_secret = ret
-            return ret
-        else:
-            return self.state.otp_secret
+            # Skip prompt if user has already selected a device for manual push
+            elif self.duo_device:
+                ret = ''
+            else:
+                print("\nDuo MFA Authentication Setup:")
+                print(
+                    "1. Press Enter to use Duo Push notifications "
+                    "(you'll approve on your phone)"
+                )
+                print("2. OR enter your Duo OTP Secret for automated passcode generation")
+                print("   (Accepts hex (hotp_secret) or base32 (otpauth://) format)")
+                ret = input('\nDuo OTP Secret (or press Enter for push): ').strip()
+                self.otp_secret = ret if ret else ''
+        return ret
 
     @otp_secret.setter
     def otp_secret(self, value):
-        self.state.otp_secret = value
+        # Auto-detect and convert hex format to base32
+        # Duo's hotp_secret is a hex string, but needs to be treated as UTF-8
+        # not as hex bytes (based on duo-hotp reference implementation)
+        if value and self._is_hex_secret(value):
+            import base64
+            # Encode the hex string as UTF-8 bytes, then base32
+            value = base64.b32encode(value.encode('utf-8')).decode('ascii').rstrip('=')
         self.set_config('otp_secret', value)
+
+    def _is_hex_secret(self, value):
+        """Check if the secret appears to be in hex format (not base32)"""
+        # Hex: 32 chars using only 0-9, a-f
+        # Base32: variable length using A-Z, 2-7
+        if len(value) != 32:
+            return False
+        try:
+            # If it can be decoded as hex, it's hex
+            bytes.fromhex(value)
+            return True
+        except ValueError:
+            return False
 
     @property
     def password(self):
-        if self.state.password is None:
-            ret = self.get_config('password')
-            if not ret:
-                ret = input("Synack Password: ")
-                self.password = ret
-            return ret
-        else:
-            return self.state.password
+        ret = self.get_config('password')
+        if not ret:
+            ret = input('Synack Password: ')
+            self.password = ret
+        return ret
 
     @password.setter
     def password(self, value):
-        self.state.password = value
         self.set_config('password', value)
+
+    @property
+    def duo_push_akey(self):
+        return self.get_config('duo_push_akey')
+
+    @duo_push_akey.setter
+    def duo_push_akey(self, value):
+        self.set_config('duo_push_akey', value)
+
+    @property
+    def duo_push_pkey(self):
+        return self.get_config('duo_push_pkey')
+
+    @duo_push_pkey.setter
+    def duo_push_pkey(self, value):
+        self.set_config('duo_push_pkey', value)
+
+    @property
+    def duo_push_host(self):
+        return self.get_config('duo_push_host')
+
+    @duo_push_host.setter
+    def duo_push_host(self, value):
+        self.set_config('duo_push_host', value)
+
+    @property
+    def duo_push_rsa_key_path(self):
+        return self.get_config('duo_push_rsa_key_path')
+
+    @duo_push_rsa_key_path.setter
+    def duo_push_rsa_key_path(self, value):
+        self.set_config('duo_push_rsa_key_path', value)
+
+    @property
+    def duo_device(self):
+        return self.get_config('duo_device')
+
+    @duo_device.setter
+    def duo_device(self, value):
+        self.set_config('duo_device', value)
 
     @property
     def ports(self):
@@ -419,19 +601,9 @@ class Db(Plugin):
 
     @property
     def proxies(self):
-        if self.state.http_proxy is None:
-            http_proxy = self.get_config('http_proxy')
-        else:
-            http_proxy = self.state.http_proxy
-
-        if self.state.https_proxy is None:
-            https_proxy = self.get_config('https_proxy')
-        else:
-            https_proxy = self.state.https_proxy
-
         return {
-            'http': http_proxy,
-            'https': https_proxy
+            'http': self.get_config('http_proxy'),
+            'https': self.get_config('https_proxy')
         }
 
     def remove_targets(self, **kwargs):
@@ -442,16 +614,11 @@ class Db(Plugin):
 
     @property
     def scratchspace_dir(self):
-        if self.state.scratchspace_dir is None:
-            ret = Path(self.get_config('scratchspace_dir')).expanduser().resolve()
-            self.state.scratchspace_dir = ret
-        else:
-            ret = self.state.scratchspace_dir
-        return ret
+        return Path(self.get_config('scratchspace_dir')).expanduser().resolve()
 
     @scratchspace_dir.setter
     def scratchspace_dir(self, value):
-        self.set_config('scratchspace_dir', value)
+        self.set_config('scratchspace_dir', str(value))
 
     def set_config(self, name, value):
         session = self.Session()
@@ -473,6 +640,30 @@ class Db(Plugin):
         config.set_main_option('sqlalchemy.url',
                                f'sqlite:///{str(self.sqlite_db)}')
         alembic.command.upgrade(config, 'head')
+
+    @property
+    def slack_app_token(self):
+        ret = self.get_config('slack_app_token')
+        if not ret:
+            ret = input('Slack App Token: ')
+            self.slack_app_token = ret
+        return ret
+
+    @slack_app_token.setter
+    def slack_app_token(self, value):
+        self.set_config('slack_app_token', value)
+
+    @property
+    def slack_channel(self):
+        ret = self.get_config('slack_channel')
+        if not ret:
+            ret = input('Slack Channel: ')
+            self.slack_channel = ret
+        return ret
+
+    @slack_channel.setter
+    def slack_channel(self, value):
+        self.set_config('slack_channel', value)
 
     @property
     def slack_url(self):
@@ -546,13 +737,16 @@ class Db(Plugin):
         return targets
 
     @property
+    def synack_domain(self):
+        return self.get_config('synack_domain')
+
+    @synack_domain.setter
+    def synack_domain(self, value):
+        self.set_config('synack_domain', value)
+
+    @property
     def template_dir(self):
-        if self.state.template_dir is None:
-            ret = Path(self.get_config('template_dir')).expanduser().resolve()
-            self.state.template_dir = ret
-        else:
-            ret = self.state.template_dir
-        return ret
+        return Path(self.get_config('template_dir')).expanduser().resolve()
 
     @template_dir.setter
     def template_dir(self, value):
@@ -567,14 +761,10 @@ class Db(Plugin):
 
     @property
     def use_proxies(self):
-        if self.state.use_proxies is None:
-            return self.get_config('use_proxies')
-        else:
-            return self.state.use_proxies
+        return self.get_config('use_proxies')
 
     @use_proxies.setter
     def use_proxies(self, value):
-        self.state.use_proxies = value
         self.set_config('use_proxies', value)
 
     @property
@@ -587,12 +777,8 @@ class Db(Plugin):
 
     @property
     def use_scratchspace(self):
-        if self.state.use_scratchspace is None:
-            return self.get_config('use_scratchspace')
-        else:
-            return self.state.use_scratchspace
+        return self.get_config('use_scratchspace')
 
     @use_scratchspace.setter
     def use_scratchspace(self, value):
-        self.state.use_scratchspace = value
         self.set_config('use_scratchspace', value)

@@ -31,7 +31,9 @@ for plugin in ./src/synack/plugins/*.py; do
         if [[ $? != 0 ]]; then
             grep "def ${def}(" ${plugin} -B1 | grep "@property" > /dev/null 2>&1
             if [[ $? != 0 ]]; then
-                echo ${p} missing documentation for: ${def}
+		if [[ "${def}" != "_"* ]]; then
+                    echo ${p} missing documentation for: ${def}
+		fi
             fi
         fi
     done
@@ -59,6 +61,6 @@ for doc in ./docs/src/usage/plugins/*.md; do
     fi
 done
 
-coverage run --source=src --omit=src/synack/db/alembic/env.py,src/synack/db/alembic/versions/*.py -m unittest discover test
-coverage report | egrep -v "^[^T].*100%"
-coverage html
+python3-coverage run --source=src --omit=src/synack/db/alembic/env.py,src/synack/db/alembic/versions/*.py -m unittest discover test
+python3-coverage report | egrep -v "^[^T].*100%"
+python3-coverage html

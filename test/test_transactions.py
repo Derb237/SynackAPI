@@ -19,8 +19,9 @@ import synack  # noqa: E402
 class TransactionsTestCase(unittest.TestCase):
     def setUp(self):
         self.state = synack._state.State()
+        self.state._db = MagicMock()
         self.transactions = synack.plugins.Transactions(self.state)
-        self.transactions.api = MagicMock()
+        self.transactions._api = MagicMock()
 
     def test_get_balance(self):
         """Should get the balance of your synack account"""
@@ -28,9 +29,9 @@ class TransactionsTestCase(unittest.TestCase):
             "total_balance": "10.0",
             "pending_payout": "0.0"
         }'''
-        self.transactions.api.request.return_value.headers = {'x-balance': bal}
-        self.transactions.api.request.return_value.status_code = 200
+        self.transactions._api.request.return_value.headers = {'x-balance': bal}
+        self.transactions._api.request.return_value.status_code = 200
         ret = self.transactions.get_balance()
         self.assertEqual(ret, json.loads(bal))
-        self.transactions.api.request.assert_called_with('HEAD',
-                                                         'transactions')
+        self.transactions._api.request.assert_called_with('HEAD',
+                                                          'transactions')

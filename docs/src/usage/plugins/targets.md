@@ -210,7 +210,7 @@
 >> [{"credentials": [{...},...],...}]
 >> ```
 
-## targets.get_query(status='registered', query_changes={})
+## targets.get(status='registered', query_changes={})
 
 > Pulls back a list of targets matching the specified query
 >
@@ -221,7 +221,7 @@
 >
 >> Examples
 >> ```python3
->> >>> h.targets.get_query(status='unregistered')
+>> >>> h.targets.get(status='unregistered')
 >> [{"codename": "SLEEPYSLUG", ...}, ...]
 >> ```
 
