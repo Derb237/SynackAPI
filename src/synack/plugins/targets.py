@@ -218,7 +218,7 @@ class Targets(Plugin):
             elif res.status_code == 403 and self._state.login:
                 self._auth.get_api_token()
 
-    def get(self, status='registered', query_changes={}):
+    def get(self, status='registered', query_changes=None):
         """Get information about targets returned from a query"""
         if not self._db.categories:
             self.get_assessments()
@@ -230,15 +230,37 @@ class Targets(Plugin):
             'filter[primary]': status,
             'filter[secondary]': 'all',
             'filter[industry]': 'all',
-            'filter[category][]': categories
+            'filter[category][]': categories,
+            'page': 1,
+            'per_page': 100
         }
+        if query_changes is None:
+            query_changes = {}
         query.update(query_changes)
-        res = self._api.request('GET', 'targets', query=query)
-        if res.status_code == 200:
-            self._db.add_targets(res.json(), is_registered=True)
-            return res.json()
-        elif res.status_code == 403 and self._state.login:
-            self._auth.get_api_token()
+
+        # Fetch all pages
+        all_targets = []
+        page = 1
+        while True:
+            query['page'] = page
+            res = self._api.request('GET', 'targets', query=query)
+            if res.status_code == 200:
+                targets = res.json()
+                if not targets:
+                    break
+                all_targets.extend(targets)
+                if len(targets) < query['per_page']:
+                    # Last page
+                    break
+                page += 1
+            elif res.status_code == 403 and self._state.login:
+                self._auth.get_api_token()
+            else:
+                break
+
+        if all_targets:
+            self._db.add_targets(all_targets, is_registered=True)
+        return all_targets
 
     def get_registered_summary(self):
         """Get information on your registered targets"""
