@@ -422,3 +422,41 @@ class Targets(Plugin):
         if len(targets) >= 15:
             ret.extend(self.set_registered())
         return ret
+
+    def mark_resource_read(self, slug):
+        """Mark a target as read via Synack API and store in local DB
+
+        Arguments:
+        slug -- Target slug to mark as read
+
+        Returns:
+        bool - True on success, False on failure
+        """
+        data = {
+            'resource_type': 'target',
+            'resource_id': slug
+        }
+        res = self._api.request('PUT', 'resource_reads', data=data)
+        if res.status_code in [200, 204]:
+            try:
+                response_data = res.json()
+                last_read_at = response_data.get('last_read_at')
+                if last_read_at:
+                    self._db.add_resource_read(slug, last_read_at)
+                    return True
+            except Exception:
+                pass
+            return False
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
+            res = self._api.request('PUT', 'resource_reads', data=data)
+            if res.status_code in [200, 204]:
+                try:
+                    response_data = res.json()
+                    last_read_at = response_data.get('last_read_at')
+                    if last_read_at:
+                        self._db.add_resource_read(slug, last_read_at)
+                        return True
+                except Exception:
+                    pass
+        return False

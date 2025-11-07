@@ -132,9 +132,9 @@ class Api(Plugin):
                                                verify=verify)
         elif method.upper() == 'PUT':
             res = self._state.session.put(url,
+                                          json=data,
                                           headers=headers,
                                           proxies=proxies,
-                                          params=data,
                                           verify=verify)
 
         self._debug.log("Network Request",

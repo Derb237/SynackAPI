@@ -18,6 +18,7 @@ from synack.db.models import IP
 from synack.db.models import Organization
 from synack.db.models import Port
 from synack.db.models import Url
+from synack.db.models import ResourceRead
 
 from .base import Plugin
 
@@ -782,3 +783,40 @@ class Db(Plugin):
     @use_scratchspace.setter
     def use_scratchspace(self, value):
         self.set_config('use_scratchspace', value)
+
+    def add_resource_read(self, slug, timestamp):
+        """Insert or update resource_reads record"""
+        session = self.Session()
+        stmt = sqlite_insert(ResourceRead).values({
+            'slug': slug,
+            'last_marked_read_at': timestamp
+        })
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['slug'],
+            set_={'last_marked_read_at': timestamp}
+        )
+        session.execute(stmt)
+        session.commit()
+        session.close()
+
+    def get_resource_read(self, slug):
+        """Retrieve ResourceRead record for a target"""
+        session = self.Session()
+        result = session.query(ResourceRead).filter_by(slug=slug).first()
+        session.close()
+        return result
+
+    def get_targets_needing_read_mark(self):
+        """Find targets that need read status marked"""
+        session = self.Session()
+        result = session.query(Target).outerjoin(
+            ResourceRead, Target.slug == ResourceRead.slug
+        ).filter(
+            Target.is_registered,
+            sa.or_(
+                ResourceRead.slug.is_(None),
+                Target.date_updated > ResourceRead.last_marked_read_at
+            )
+        ).all()
+        session.close()
+        return result
