@@ -165,7 +165,8 @@ class Api(Plugin):
         elif res.status_code >= 400:
             self._debug.log(f'Request failed', f'({res.status_code} - {res.reason}) {res.url}')
             if attempts < 5:
-                self._debug.log('Retrying', f'Attempt #{attempts + 1}')
+                self._debug.log('Retrying', f'Attempt #{attempts + 1} after 2 second delay...')
+                time.sleep(2)
                 attempts += 1
                 return self.request(method, path, attempts, **kwargs)
 
