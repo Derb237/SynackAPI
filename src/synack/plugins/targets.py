@@ -409,7 +409,13 @@ class Targets(Plugin):
         return self.get(status='upcoming', query_changes=query_changes)
 
     def set_connected(self, target=None, **kwargs):
-        """Connect to a target"""
+        """Connect to a target
+
+        Returns:
+            dict: On success, returns connected target info from get_connected()
+            dict: On failure, returns {'error': True, 'status_code': int, 'response': dict/str}
+            None: If slug not found
+        """
         slug = None
         if target:
             slug = target.slug
@@ -426,6 +432,18 @@ class Targets(Plugin):
                 return self.get_connected()
             elif res.status_code == 403 and self._state.login:
                 self._auth.get_api_token()
+            else:
+                # Return error details for better error handling
+                error_info = {
+                    'error': True,
+                    'status_code': res.status_code,
+                    'slug': slug
+                }
+                try:
+                    error_info['response'] = res.json()
+                except Exception:
+                    error_info['response'] = res.text
+                return error_info
 
     def set_registered(self, targets=None):
         """Register all unregistered targets"""

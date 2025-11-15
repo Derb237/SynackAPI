@@ -374,12 +374,31 @@
 > | `target` | db.models.Target | A single Target returned from the database
 > | `kwargs` | kwargs | Information used to look up a Target in the database (ex: `codename`, `slug`, etc.)
 >
+> **Returns:**
+> - On **success**: `dict` with `status`, `codename`, and `slug` fields
+> - On **failure**: `dict` with `error`, `status_code`, `slug`, and `response` fields
+> - If target not found: `None`
+>
 >> Examples
 >> ```python3
->> h.targets.set_connected(codename='BLINKYBABOON')
->> >>> {'slug': '12083y9', 'codename': 'BLINKYBABOON', 'status': 'Connected'}
->> h.targets.set_connected(slug='12083y9')
->> >>> {'slug': '12083y9', 'codename': 'BLINKYBABOON', 'status': 'Connected'}
+>> # Successful connection
+>> >>> h.targets.set_connected(codename='BLINKYBABOON')
+>> {'slug': '12083y9', 'codename': 'BLINKYBABOON', 'status': 'Connected'}
+>>
+>> # Connection failure (e.g., scheduled outage)
+>> >>> h.targets.set_connected(codename='SLEEPYSLUG')
+>> {
+>>   'error': True,
+>>   'status_code': 400,
+>>   'slug': 'abc123xyz',
+>>   'response': {
+>>     'errors': [{
+>>       'key': 'unavailable_listing',
+>>       'title': 'Listing can not be selected because it is not active for testing and/or there is an ongoing outage window',
+>>       'status': 400
+>>     }]
+>>   }
+>> }
 >> ```
 
 ## targets.set_registered(targets)
