@@ -221,3 +221,54 @@
 >> {'target': 'jwfplgu', 'title': 'Some Mission', 'payout': 50,
 >>     'status': 'DISCLAIMED', 'success': True}
 
+## missions.get_attachments(mission)
+
+> Get a list of attachments for a mission
+>
+> | Arguments | Type | Description
+> | --- | --- | ---
+> | `mission` | dict | A single mission dict returned from the Synack API
+>
+>> Examples
+>> ```python3
+>> >>> msns = h.missions.get_claimed()
+>> >>> h.missions.get_attachments(msns[0])
+>> [{'id': 'uuid4...', 'filename': 'screenshot.png', 'content_type': 'image/png', 'byte_size': 12345},...]
+>> ```
+
+## missions.upload_attachment(mission, file_path, title, description)
+
+> Upload a file attachment to a mission
+>
+> | Arguments | Type | Description
+> | --- | --- | ---
+> | `mission` | dict | A single mission dict returned from the Synack API
+> | `file_path` | str | Path to the file to upload
+> | `title` | str | Display title for the attachment
+> | `description` | str | Optional description text</br>(Default: None)
+>
+>> Examples
+>> ```python3
+>> >>> msns = h.missions.get_claimed()
+>> >>> h.missions.upload_attachment(msns[0], '/path/to/screenshot.png', 'Evidence Screenshot')
+>> {'success': True, 'attachment_id': 'uuid4...', 'filename': 'screenshot.png',
+>>     'title': 'Evidence Screenshot', 'error': None}
+>> ```
+
+## missions.delete_attachment(mission, attachment_id)
+
+> Delete an attachment from a mission
+>
+> | Arguments | Type | Description
+> | --- | --- | ---
+> | `mission` | dict | A single mission dict returned from the Synack API
+> | `attachment_id` | str | UUID of the attachment to delete
+>
+>> Examples
+>> ```python3
+>> >>> msns = h.missions.get_claimed()
+>> >>> atts = h.missions.get_attachments(msns[0])
+>> >>> h.missions.delete_attachment(msns[0], atts[0]['id'])
+>> {'success': True, 'attachment_id': 'uuid4...', 'error': None}
+>> ```
+

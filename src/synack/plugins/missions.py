@@ -280,3 +280,153 @@ class Missions(Plugin):
             "status": status,
             "success": True if res.status_code == 201 else False
         }
+
+    def _build_attachments_path(self, mission):
+        """Build the base path for attachment operations
+
+        Arguments:
+        mission -- A single mission dict
+        """
+        orgId = mission.get('organizationUid', 'unk')
+        listingId = mission.get('listingUid', 'unk')
+        campaignId = mission.get('campaignUid', 'unk')
+        taskId = mission.get('id')
+
+        return (f'tasks/v1/organizations/{orgId}/listings/{listingId}'
+                f'/campaigns/{campaignId}/tasks/{taskId}/attachments')
+
+    def get_attachments(self, mission):
+        """Get list of attachments for a mission
+
+        Arguments:
+        mission -- A single mission dict
+
+        Returns:
+        List of attachment dicts or empty list on failure
+        """
+        path = self._build_attachments_path(mission)
+        res = self._api.request('GET', path)
+
+        if res.status_code == 200:
+            return res.json()
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
+        return []
+
+    def upload_attachment(self, mission, file_path, title, description=None):
+        """Upload a file attachment to a mission
+
+        Arguments:
+        mission -- A single mission dict
+        file_path -- Path to the file to upload
+        title -- Display title for the attachment
+        description -- Optional description text
+
+        Returns:
+        Dict with upload result:
+        {
+            'success': bool,
+            'attachment_id': str or None,
+            'filename': str,
+            'title': str,
+            'error': str or None
+        }
+        """
+        import json
+        import mimetypes
+        import os
+
+        path = self._build_attachments_path(mission)
+        filename = os.path.basename(file_path)
+
+        # Determine MIME type
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type is None:
+            mime_type = 'application/octet-stream'
+
+        result = {
+            'success': False,
+            'attachment_id': None,
+            'filename': filename,
+            'title': title,
+            'error': None
+        }
+
+        # Build metadata JSON - the API expects 'metadata' as a JSON string field
+        metadata = {'title': title}
+        if description:
+            metadata['description'] = description
+
+        try:
+            with open(file_path, 'rb') as f:
+                files = {
+                    'file': (filename, f, mime_type)
+                }
+                data = {
+                    'metadata': json.dumps(metadata)
+                }
+
+                res = self._api.request_multipart('POST', path, files=files, data=data)
+
+                if res.status_code == 201:
+                    result['success'] = True
+                    response_data = res.json()
+                    # Response is a list with the new attachment
+                    if isinstance(response_data, list) and len(response_data) > 0:
+                        result['attachment_id'] = response_data[0].get('id')
+                    elif isinstance(response_data, dict):
+                        result['attachment_id'] = response_data.get('id')
+                elif res.status_code == 403 and self._state.login:
+                    self._auth.get_api_token()
+                    result['error'] = 'Authentication failed'
+                else:
+                    result['error'] = f'Upload failed with status {res.status_code}'
+                    try:
+                        error_body = res.json()
+                        result['error'] += f': {error_body}'
+                    except Exception:
+                        pass
+
+        except FileNotFoundError:
+            result['error'] = f'File not found: {file_path}'
+        except Exception as e:
+            result['error'] = f'Upload error: {str(e)}'
+
+        return result
+
+    def delete_attachment(self, mission, attachment_id):
+        """Delete an attachment from a mission
+
+        Arguments:
+        mission -- A single mission dict
+        attachment_id -- UUID of the attachment to delete
+
+        Returns:
+        Dict with deletion result:
+        {
+            'success': bool,
+            'attachment_id': str,
+            'error': str or None
+        }
+        """
+        path = self._build_attachments_path(mission) + f'/{attachment_id}'
+
+        result = {
+            'success': False,
+            'attachment_id': attachment_id,
+            'error': None
+        }
+
+        res = self._api.request_delete(path)
+
+        if res.status_code == 204:
+            result['success'] = True
+        elif res.status_code == 403 and self._state.login:
+            self._auth.get_api_token()
+            result['error'] = 'Authentication failed'
+        elif res.status_code == 404:
+            result['error'] = 'Attachment not found'
+        else:
+            result['error'] = f'Delete failed with status {res.status_code}'
+
+        return result

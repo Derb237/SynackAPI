@@ -175,3 +175,121 @@ class Api(Plugin):
             self._debug.log(reason_failed, f'({res.status_code} - {res.reason}) {res.url}')
 
         return res
+
+    def request_multipart(self, method, path, files, data=None, attempts=0, **kwargs):
+        """Send multipart/form-data API Request (for file uploads)
+
+        Arguments:
+        method -- Request method verb (typically POST)
+        path -- API endpoint path
+                Can be an endpoint on platform.synack.com or a full URL
+        files -- Dictionary of files to upload, format:
+                 {'field_name': ('filename', file_object, 'mime_type')}
+                 or {'field_name': file_path_string}
+        data -- Additional form fields (dictionary)
+        attempts -- Number of times the request has been attempted
+        """
+        base = '' if path.startswith('http') else f'https://platform.{self._state.synack_domain}/api/'
+        url = f'{base}{path}'
+
+        verify = False
+        warnings.filterwarnings('ignore')
+
+        proxies = self._state.proxies if self._state.use_proxies else None
+
+        headers = {
+            'Authorization': f'Bearer {self._state.api_token}',
+            'user_id': self._state.user_id
+        }
+        # Don't set Content-Type - requests library will set it with boundary
+        if kwargs.get('headers'):
+            headers.update(kwargs.get('headers', {}))
+
+        if method.upper() == 'POST':
+            res = self._state.session.post(url,
+                                           files=files,
+                                           data=data,
+                                           headers=headers,
+                                           proxies=proxies,
+                                           verify=verify)
+        elif method.upper() == 'PUT':
+            res = self._state.session.put(url,
+                                          files=files,
+                                          data=data,
+                                          headers=headers,
+                                          proxies=proxies,
+                                          verify=verify)
+        else:
+            raise ValueError(f"Unsupported method for multipart: {method}")
+
+        self._debug.log("Network Request (multipart)",
+                        f"{res.status_code} -- {method.upper()} -- {url}" +
+                        f"\n\tHeaders: {headers}" +
+                        f"\n\tData fields: {list(data.keys()) if data else None}" +
+                        f"\n\tFile fields: {list(files.keys()) if files else None}")
+
+        if res.status_code == 429:
+            self._debug.log('Too many requests', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                self._debug.log('Pausing', 'Retrying in 30 seconds...')
+                time.sleep(30)
+                attempts += 1
+                return self.request_multipart(method, path, files, data, attempts, **kwargs)
+        elif res.status_code >= 400:
+            self._debug.log('Request failed', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5 and res.status_code not in [400, 401, 403, 412, 423]:
+                self._debug.log('Retrying', f'Attempt #{attempts + 1} after 2 second delay...')
+                time.sleep(2)
+                attempts += 1
+                return self.request_multipart(method, path, files, data, attempts, **kwargs)
+
+        return res
+
+    def request_delete(self, path, attempts=0, **kwargs):
+        """Send DELETE API Request
+
+        Arguments:
+        path -- API endpoint path
+                Can be an endpoint on platform.synack.com or a full URL
+        attempts -- Number of times the request has been attempted
+        """
+        base = '' if path.startswith('http') else f'https://platform.{self._state.synack_domain}/api/'
+        url = f'{base}{path}'
+
+        verify = False
+        warnings.filterwarnings('ignore')
+
+        proxies = self._state.proxies if self._state.use_proxies else None
+
+        headers = {
+            'Authorization': f'Bearer {self._state.api_token}',
+            'user_id': self._state.user_id
+        }
+        if kwargs.get('headers'):
+            headers.update(kwargs.get('headers', {}))
+
+        res = self._state.session.delete(url,
+                                         headers=headers,
+                                         proxies=proxies,
+                                         verify=verify)
+
+        self._debug.log("Network Request",
+                        f"{res.status_code} -- DELETE -- {url}" +
+                        f"\n\tHeaders: {headers}")
+
+        if res.status_code == 429:
+            self._debug.log('Too many requests', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                self._debug.log('Pausing', 'Retrying in 30 seconds...')
+                time.sleep(30)
+                attempts += 1
+                return self.request_delete(path, attempts, **kwargs)
+        elif res.status_code >= 400 and res.status_code not in [204, 400, 401, 403, 404]:
+            self._debug.log('Request failed', f'({res.status_code} - {res.reason}) {res.url}')
+            if attempts < 5:
+                self._debug.log('Retrying', f'Attempt #{attempts + 1} after 2 second delay...')
+                time.sleep(2)
+                attempts += 1
+                return self.request_delete(path, attempts, **kwargs)
+
+        return res
