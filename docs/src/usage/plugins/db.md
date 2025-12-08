@@ -291,3 +291,53 @@ Additionally, some properties can be overridden by the State, which allows you t
 >> ```python3
 >> >>> h.db.set_migration()
 >> ```
+
+## db.add_resource_read(slug, timestamp)
+
+> Inserts or updates a resource_reads record to track when a target was last marked as read.
+>
+> This is typically called by `targets.mark_resource_read()` after a successful API call.
+>
+> | Argument | Type | Description
+> | --- | --- | ---
+> | `slug` | str | The target slug
+> | `timestamp` | int | Unix timestamp of when the target was marked as read
+>
+>> Examples
+>> ```python3
+>> >>> h.db.add_resource_read('uwfpmfpgjlum', 1699123456)
+>> ```
+
+## db.get_resource_read(slug)
+
+> Retrieves the ResourceRead record for a target, if it exists.
+>
+> | Argument | Type | Description
+> | --- | --- | ---
+> | `slug` | str | The target slug to look up
+>
+> **Returns:** `ResourceRead` object or `None` if not found
+>
+>> Examples
+>> ```python3
+>> >>> record = h.db.get_resource_read('uwfpmfpgjlum')
+>> >>> record.last_marked_read_at
+>> 1699123456
+>> ```
+
+## db.get_targets_needing_read_mark()
+
+> Finds registered targets that need to be marked as read based on local database state.
+>
+> Returns targets where either:
+> - No resource_reads record exists (never marked as read), OR
+> - `date_updated > last_marked_read_at` (target updated since last read)
+>
+> **Returns:** List of `Target` objects needing to be marked as read
+>
+>> Examples
+>> ```python3
+>> >>> targets = h.db.get_targets_needing_read_mark()
+>> >>> for t in targets:
+>> ...     h.targets.mark_resource_read(t.slug)
+>> ```

@@ -420,3 +420,27 @@
 >> >>> h.targets.set_unregistered()
 >> [{"id": "pwjlgmf",...},...]
 >> ```
+
+## targets.mark_resource_read(slug)
+
+> Marks a target as "read" via the Synack API and stores the timestamp in the local database.
+>
+> Calls `PUT /api/resource_reads` to update the read timestamp, then stores the returned
+> `last_read_at` value in the local database via `db.add_resource_read()`.
+>
+> | Arguments | Type | Description
+> | --- | --- | ---
+> | `slug` | str | The slug of the target to mark as read
+>
+> **Returns:** `True` on success, `False` on failure
+>
+>> Examples
+>> ```python3
+>> >>> h.targets.mark_resource_read('uwfpmfpgjlum')
+>> True
+>> >>>
+>> >>> # Mark all registered targets as read
+>> >>> for target in h.db.find_targets(is_registered=True):
+>> ...     h.targets.mark_resource_read(target.slug)
+>> ...     time.sleep(1)  # Rate limit
+>> ```
